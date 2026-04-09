@@ -147,8 +147,8 @@ def combined_score(predicted: str, ground_truth: str,
     """Multi-metric scoring. Returns (score, correct).
 
     For yes/no: checks if the correct answer appears in the prediction.
-    For open-ended: takes the max of keyword overlap, ROUGE-L, and CLIP
-    text similarity.  'correct' = score >= 0.35.
+    For open-ended: weighted combination of keyword overlap, ROUGE-L,
+    and CLIP text similarity.  'correct' = score >= 0.30.
     """
     if is_yes_no:
         pred_lower = predicted.strip().lower()
@@ -167,8 +167,8 @@ def combined_score(predicted: str, ground_truth: str,
     rl = rouge_l_score(predicted, ground_truth)
     clip_sim = clip_text_similarity(predicted, ground_truth)
 
-    score = max(kw, rl, clip_sim)
-    correct = score >= 0.35
+    score = 0.3 * kw + 0.3 * rl + 0.4 * clip_sim
+    correct = score >= 0.30
     return round(score, 3), correct
 
 
@@ -334,8 +334,37 @@ def _summarize_captions(captions: list[str], vlm: VLMEngine) -> str:
     return unique[0]
 
 
-def build_liveqa_bench(vlm: VLMEngine) -> list[QA]:
-    """Build LiveQA-Bench with clean summarized ground truth."""
+def load_liveqa_bench(path: str) -> list[QA]:
+    """Load a previously saved LiveQA-Bench from JSON."""
+    with open(path) as f:
+        data = json.load(f)
+    qa_list = []
+    for item in data:
+        qa_list.append(QA(
+            qid=item["question_id"],
+            stream=item["stream_id"],
+            question=item["question"],
+            timestamp=item["timestamp"],
+            scope=item["scope"],
+            ground_truth=item["answer"],
+            is_yes_no=item.get("is_yes_no", False),
+        ))
+    log.info(f"Loaded {len(qa_list)} QA pairs from {path}")
+    return qa_list
+
+
+def build_liveqa_bench(vlm: VLMEngine, force_rebuild: bool = False) -> list[QA]:
+    """Build LiveQA-Bench with clean summarized ground truth.
+
+    If a saved benchmark exists and force_rebuild is False, loads from disk
+    to ensure deterministic results across runs.
+    """
+    saved_path = f"{RESULTS_DIR}/liveqa_bench.json"
+    if not force_rebuild and os.path.exists(saved_path):
+        log.info(f"Loading saved benchmark from {saved_path}")
+        log.info("  (use force_rebuild=True to regenerate)")
+        return load_liveqa_bench(saved_path)
+
     log.info("=" * 60)
     log.info("  PHASE 2a: Building LiveQA-Bench")
     log.info("=" * 60)
@@ -443,11 +472,12 @@ def build_liveqa_bench(vlm: VLMEngine) -> list[QA]:
                 ground_truth=full_gt,
             ))
             qid += 1
+            did_change = n_unique > 1
             all_qa.append(QA(
                 qid=f"lqa_{qid:04d}", stream=stream_name,
                 timestamp=t_q, scope="historical",
                 question="Did anything change earlier in the video?",
-                ground_truth=full_gt,
+                ground_truth="yes" if did_change else "no",
                 is_yes_no=True,
             ))
             qid += 1
