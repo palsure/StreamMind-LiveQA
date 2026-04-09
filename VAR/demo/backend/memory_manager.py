@@ -125,9 +125,9 @@ class MemoryManager:
             recent = [e for e in self.entries if e.timestamp >= cutoff]
             if len(recent) >= min_recent_frames:
                 return recent
-            # Fallback: return the N most recent frames by timestamp
-            sorted_by_time = sorted(self.entries, key=lambda e: e.timestamp, reverse=True)
-            return sorted_by_time[:max(min_recent_frames, len(recent))]
+            # Fallback: return the N most recent frames in chronological order
+            sorted_by_time = sorted(self.entries, key=lambda e: e.timestamp)
+            return sorted_by_time[-max(min_recent_frames, len(recent)):]
 
         return list(self.entries)
 

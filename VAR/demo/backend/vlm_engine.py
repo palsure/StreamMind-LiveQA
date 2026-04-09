@@ -351,14 +351,14 @@ class VLMEngine:
             )
 
         if scope == "recent":
-            caption_str = ". ".join(ranked_captions[:5]) if ranked_captions else "unknown"
-            vqa_str = ", ".join(ranked_answers[:5]) if ranked_answers else "unknown"
+            caption_str = ". ".join(ranked_captions[:4]) if ranked_captions else "unknown"
+            vqa_str = ", ".join(ranked_answers[:4]) if ranked_answers else "unknown"
             return (
-                f"Based on {n_frames} recent video frames from the last 30 seconds:\n"
-                f"Observations over time: {caption_str}\n"
+                f"Based on {n_frames} video frames from the last 30 seconds:\n"
+                f"Scene observations: {caption_str}\n"
                 f"Visual details: {vqa_str}\n"
                 f"Question: {query}\n"
-                f"Describe what happened recently in 1-2 sentences:"
+                f"Give a detailed answer in 1-2 sentences:"
             )
 
         # historical
