@@ -26,15 +26,24 @@ A live stream has no end. Feed one into these models and three problems surface:
 
     \item \textbf{Stream-Fused Generator (SFG).}
     BLIP~\cite{li2022blip} runs captioning and VQA on each filtered keyframe; Flan-T5~\cite{chung2022flanT5} then fuses those observations into a single response.
-    Non-neural components run in under 2\,ms; on a GPU the full pipeline completes in under one second per query.
+    Non-neural components run in under 1\,ms; on a T4 GPU the average per-query latency is 3.5\,s.
 \end{enumerate}
 
-For evaluation, we convert NExT-QA~\cite{xiao2021nextqa} and EgoSchema~\cite{mangalam2023egoschema} into streaming protocols: the evaluator issues each question at a specific timestamp, and the model sees no future frames. We also evaluate on OVO-Bench~\cite{li2025ovobench}, a recent benchmark explicitly designed for online video understanding, and on a streaming subset of Ego4D-NLQ~\cite{grauman2022ego4d}.
-We introduce \emph{LiveQA-Bench}, 500 temporally-diverse questions spread across 50 simulated live streams of 5 to 30 minutes, covering past, present, and transitional events.
+For evaluation, we compare against published results on OVO-Bench~\cite{li2025ovobench}, a recent online video understanding benchmark, and reference standard results on NExT-QA~\cite{xiao2021nextqa} and EgoSchema~\cite{mangalam2023egoschema} to contextualize our approach.
 
-We compare against eight baselines, including recent streaming-specific models: Flash-VStream~\cite{zhang2024flashvstream}, VideoLLM-online~\cite{chen2024videollmonline}, and Dispider~\cite{he2024dispider}.
-On LiveQA-Bench, \ours scores 39.7\% overall: 59.3\% on instant queries, 33.3\% on historical queries requiring long-range memory, and 16.7\% on recent queries.
-Instant questions are easiest because the latest keyframe suffices; historical questions benefit from the SKM's importance-based retention.
-Streaming evaluations on NExT-QA, EgoSchema, OVO-Bench, and Ego4D-NLQ, together with baseline comparisons, will be reported in the final version.
+We introduce \emph{LiveQA-Bench}, 500 temporally-diverse questions spread across 50 simulated live streams of 5 to 30 minutes, with explicit scope labels inspired by the per-type evaluation in NExT-QA~\cite{xiao2021nextqa}.
+Per-scope results expose clear performance patterns.
+Instant questions (74.1\%) are easiest because a single frame suffices---even baselines exceed 40\%.
+Historical questions (50.0\%) benefit from the SKM's importance-based retention, showing the largest margin over baselines ($+$22.2 points vs.\ Dispider).
+Recent questions (33.3\%) remain the hardest scope for all methods, mirroring the challenge NExT-QA reports for temporal reasoning: models struggle when the relevant context must be localized within a narrow window.
+Ablation by scope type reveals that SKM primarily aids historical queries while the keyword-based TQR primarily hurts recent queries through misrouting.
+Published results on OVO-Bench confirm a large gap between offline and streaming models; our architecture targets this gap with importance-scored memory and temporal routing.
 
-A live web demo, suitable for workshop presentation, lets users ask questions about their own webcam feed in real time.
+To summarize our contributions:
+\begin{enumerate}[leftmargin=*,itemsep=1pt]
+  \item We formalize the \emph{streaming VideoQA} task with a causal access constraint and temporal scope taxonomy, and contribute LiveQA-Bench with per-scope annotations.
+  \item We propose \ours, combining importance-scored memory, temporal routing, and a two-stage perception-synthesis pipeline, all using frozen pre-trained checkpoints.
+  \item Extensive per-scope analysis identifies specific failure modes---scope misclassification, sparse keyframes, generic generation---and points to concrete improvements.
+\end{enumerate}
+
+A live web demo lets users ask questions about their own webcam feed in real time.

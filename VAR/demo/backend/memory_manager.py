@@ -53,6 +53,9 @@ class MemoryManager:
         return self.alpha * novelty + (1.0 - self.alpha) * temporal_coverage
 
     def _recompute_stored_importance(self):
+        if not self.entries:
+            return
+        now = max(e.timestamp for e in self.entries)
         for i, entry in enumerate(self.entries):
             others = [e for j, e in enumerate(self.entries) if j != i]
             if not others:
@@ -62,10 +65,13 @@ class MemoryManager:
                 self._cosine_similarity(entry.embedding, o.embedding) for o in others
             )
             min_gap = min(abs(entry.timestamp - o.timestamp) for o in others)
-            entry.importance = (
+            raw = (
                 self.alpha * (1.0 - max_sim)
                 + (1.0 - self.alpha) * min(min_gap / self.t_max, 1.0)
             )
+            age = now - entry.timestamp
+            decay = 1.0 / (1.0 + age / self.t_max)
+            entry.importance = raw * decay
 
     def add_frame(self, embedding: np.ndarray, frame_base64: str, timestamp: float | None = None) -> bool:
         """Add a frame to memory. Returns True if it was stored."""

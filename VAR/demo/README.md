@@ -57,13 +57,14 @@ cd demo/scripts
 python download_samples.py
 ```
 
-This downloads two sample clips that match the qualitative examples in the paper:
-- **Cooking Stream** — egocentric cooking video (fridge interaction scenario)
-- **Surveillance Feed** — empty office room (instant-scope scenario)
+This downloads three sample clips:
+- **Activity (Recommended)** — multi-scene composite (home, dog, park, kitchen) that produces different answers for each temporal scope. Requires `ffmpeg` on PATH.
+- **Cooking Stream** — single-scene cooking video
+- **Surveillance Feed** — empty office room
 
 ### 4. Open the demo
 
-Navigate to `http://localhost:8000` in your browser. Click **Start Webcam** for live input, or use the **Sample Videos** dropdown to load one of the pre-downloaded clips. Then type questions in the chat panel.
+Navigate to `http://localhost:8000` in your browser. Click **Start Webcam** for live input, or use the **Sample Videos** dropdown. **Use "Activity (Recommended)"** for the best demo — it has 4 distinct scenes so that instant, recent, and historical queries return visibly different answers. Then type questions in the chat panel.
 
 ## Workshop Presentation Mode
 
@@ -106,7 +107,7 @@ demo/
     index.html          # Main page
     style.css           # Dark-theme responsive UI
     app.js              # WebSocket client, webcam capture, chat logic
-    samples/            # Downloaded sample videos (cooking, surveillance)
+    samples/            # Downloaded sample videos (activity, cooking, surveillance)
   scripts/
     download_samples.py # Downloads sample video clips
     generate_figures.py # Generates qualitative figures for the paper
@@ -117,4 +118,5 @@ demo/
 
 - Python 3.10+
 - Modern browser with webcam access (Chrome, Firefox, Edge)
+- `ffmpeg` for building the composite activity sample video
 - (Optional) NVIDIA GPU with CUDA for CLIP encoding and VLM inference

@@ -354,6 +354,16 @@ main {
   background: var(--border);
 }
 
+.btn-pause-active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.btn-pause-active:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
 /* ---- Typing Indicator ---- */
 
 .typing-indicator {
@@ -430,19 +440,15 @@ main {
   background: var(--border);
 }
 
-/* ---- Suggested Questions ---- */
+/* ---- Bottom Bar (Try suggestions + Clear) ---- */
 
-.suggested-questions {
+.chat-bottom-bar {
   display: flex;
   align-items: center;
   gap: 6px;
   padding: 8px 16px;
-  border-bottom: 1px solid var(--border);
+  border-top: 1px solid var(--border);
   flex-wrap: wrap;
-}
-
-.suggested-questions.hidden {
-  display: none;
 }
 
 .suggested-label {
@@ -465,6 +471,12 @@ main {
 .suggested-q:hover {
   border-color: var(--accent);
   background: var(--bg-tertiary);
+}
+
+.btn-clear-chat {
+  margin-left: auto;
+  padding: 4px 12px;
+  font-size: 0.72rem;
 }
 
 /* ---- Presentation Mode Header Button ---- */
@@ -539,7 +551,8 @@ body.presentation-mode .scope-tag {
   padding: 2px 8px;
 }
 
-body.presentation-mode .suggested-q {
+body.presentation-mode .suggested-q,
+body.presentation-mode .btn-clear-chat {
   font-size: 0.85rem;
   padding: 6px 14px;
 }

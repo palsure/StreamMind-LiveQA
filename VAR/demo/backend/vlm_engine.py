@@ -41,7 +41,7 @@ SCOPE_KEYWORDS = {
     ],
 }
 
-MAX_SAMPLE_FRAMES = {"instant": 1, "recent": 6, "historical": 10}
+MAX_SAMPLE_FRAMES = {"instant": 1, "recent": 6, "historical": 12}
 CAPTION_MODEL = "Salesforce/blip-image-captioning-base"
 VQA_MODEL = "Salesforce/blip-vqa-base"
 LLM_MODEL = "google/flan-t5-base"
@@ -168,50 +168,46 @@ class VLMEngine:
         t = text.strip().lower()
         return t in self._NEGATIVE_PERSON or t.startswith("no ")
 
-    def _describe_frame(self, image: "Image.Image") -> str:
-        """Build a stable scene description from structured VQA sub-questions."""
-        answers = {}
-        for key, question in self._SCENE_QUESTIONS:
-            ans = self._vqa(image, question)
-            if ans and ans.lower() not in ("", "no", "none", "nothing", "n/a", "unknown"):
-                answers[key] = ans
+    _BAD_LOCATIONS = {
+        "dark", "light", "outside", "inside", "room", "screen",
+        "image", "picture", "photo", "video", "frame", "it",
+        "background", "unknown", "none", "no", "yes",
+    }
 
-        logger.info(f"Scene VQA answers: {answers}")
-
-        who = answers.get("who", "")
-        doing = answers.get("doing", "")
-        where = answers.get("where", "")
-        count = answers.get("count", "")
-
-        who_neg = self._is_negative_person(who) or not who
-        count_zero = count.strip() in ("0", "zero", "")
-        where_clean = where.removeprefix("in ").strip() if where else ""
-
-        parts = []
-        if who_neg and count_zero:
-            if where_clean:
-                parts.append(f"an empty {where_clean}")
-            else:
-                parts.append("an empty room")
-        else:
-            if who and not self._is_negative_person(who) and doing and not self._is_negative_person(doing):
-                parts.append(f"{who} {doing}")
-            elif who and not self._is_negative_person(who):
-                parts.append(who)
-            elif doing and not self._is_negative_person(doing):
-                parts.append(f"a person {doing}")
-            if where_clean:
-                parts.append(f"in {where_clean}")
-
-        if not parts:
-            if self.caption_model is not None:
-                inputs = self.caption_processor(images=image, return_tensors="pt").to(self.device)
-                with torch.no_grad():
-                    output = self.caption_model.generate(**inputs, max_new_tokens=30)
-                return self.caption_processor.decode(output[0], skip_special_tokens=True).strip()
+    def _caption_frame(self, image: "Image.Image") -> str:
+        """Generate a free-form BLIP caption for the frame."""
+        if self.caption_model is None:
             return ""
+        inputs = self.caption_processor(images=image, return_tensors="pt").to(self.device)
+        with torch.no_grad():
+            output = self.caption_model.generate(**inputs, max_new_tokens=50)
+        return self.caption_processor.decode(output[0], skip_special_tokens=True).strip()
 
-        return " ".join(parts)
+    def _describe_frame(self, image: "Image.Image") -> str:
+        """Generate a clean scene description via BLIP captioning."""
+        caption = self._caption_frame(image)
+
+        where = self._vqa(image, "Where is this scene taking place?")
+        if where:
+            where_clean = where.removeprefix("in ").removeprefix("at ").removeprefix("the ").strip()
+            is_useful = (
+                where_clean
+                and where_clean.lower() not in self._BAD_LOCATIONS
+                and len(where_clean.split()) >= 2
+                and where_clean.lower() not in (caption or "").lower()
+            )
+            if is_useful and caption:
+                caption = f"{caption} in {where_clean}"
+            elif is_useful:
+                caption = f"a scene in {where_clean}"
+
+        if not caption:
+            caption = self._caption_frame(image) or "an unclear scene"
+
+        if not caption[0].isupper():
+            caption = caption[0].upper() + caption[1:]
+
+        return caption
 
     def _synthesize(self, prompt: str) -> str:
         """Use Flan-T5 to generate a natural language response from a prompt."""
@@ -221,9 +217,9 @@ class VLMEngine:
         with torch.no_grad():
             output = self.llm.generate(
                 **inputs,
-                max_new_tokens=80,
+                max_new_tokens=120,
                 num_beams=4,
-                length_penalty=1.0,
+                length_penalty=1.2,
                 no_repeat_ngram_size=3,
             )
         return self.llm_tokenizer.decode(output[0], skip_special_tokens=True).strip()
@@ -334,47 +330,53 @@ class VLMEngine:
             vqa_str = ", ".join(ranked_answers[:4]) if ranked_answers else "unknown"
             return (
                 f"Question: {query}\n"
-                f"Visual answer: {vqa_str}\n"
-                f"Scene: {caption_str}\n"
-                f"Answer with yes or no, then describe what is visible:"
+                f"Visual evidence: {vqa_str}\n"
+                f"Scene description: {caption_str}\n"
+                f"Answer yes or no, then briefly explain what you see:"
             )
 
         if scope == "instant":
-            caption_str = ranked_captions[0] if ranked_captions else "unknown"
-            vqa_str = ", ".join(ranked_answers[:3]) if ranked_answers else "unknown"
+            caption_str = ranked_captions[0] if ranked_captions else "unknown scene"
             return (
-                f"Based on the current video frame:\n"
-                f"Scene: {caption_str}\n"
-                f"Visual details: {vqa_str}\n"
+                f"You are describing what a camera sees right now.\n"
+                f"The camera shows: {caption_str}\n"
                 f"Question: {query}\n"
-                f"Describe what is visible right now in 1-2 sentences:"
+                f"Write a clear, plain English description of the scene in 1-2 sentences. "
+                f"Do not list objects. Describe the scene as a whole:"
             )
 
         if scope == "recent":
-            caption_str = ". ".join(ranked_captions[:4]) if ranked_captions else "unknown"
-            vqa_str = ", ".join(ranked_answers[:4]) if ranked_answers else "unknown"
+            numbered = [f"{i+1}. {c}" for i, c in enumerate(ranked_captions[:6])]
+            scene_list = "\n".join(numbered) if numbered else "unknown"
             return (
-                f"Based on {n_frames} video frames from the last 30 seconds:\n"
-                f"Scene observations: {caption_str}\n"
-                f"Visual details: {vqa_str}\n"
+                f"A camera has been recording. In the last 30 seconds, it captured these scenes:\n"
+                f"{scene_list}\n"
                 f"Question: {query}\n"
-                f"Give a detailed answer in 1-2 sentences:"
+                f"Write a short plain English paragraph describing what happened recently. "
+                f"Connect the scenes into a narrative rather than listing them:"
             )
 
         # historical
-        caption_str = ". ".join(ranked_captions[:8]) if ranked_captions else "unknown"
-        vqa_str = ", ".join(ranked_answers[:6]) if ranked_answers else "unknown"
+        unique_scenes = []
+        seen = set()
+        for c in ranked_captions:
+            key = c.lower().split(",")[0].strip()[:30]
+            if key not in seen:
+                seen.add(key)
+                unique_scenes.append(c)
+        numbered = [f"{i+1}. {c}" for i, c in enumerate(unique_scenes[:10])]
+        scene_list = "\n".join(numbered) if numbered else "unknown"
         return (
-            f"Based on {n_frames} frames spanning the entire video stream:\n"
-            f"Scene observations over time: {caption_str}\n"
-            f"Visual details: {vqa_str}\n"
+            f"A video has been playing for several minutes. "
+            f"These {len(unique_scenes)} different scenes appeared:\n"
+            f"{scene_list}\n"
             f"Question: {query}\n"
-            f"Summarize what happened throughout the stream in 1-2 sentences:"
+            f"Write a plain English summary paragraph describing the variety of scenes. "
+            f"Mention what changed over time. Do not repeat the list:"
         )
 
     def _direct_answer_from_observations(self, query: str, obs: dict) -> str:
-        """Build a direct answer from BLIP observations without Flan-T5.
-        Uses frequency-ranked captions and answers for best accuracy."""
+        """Build a direct answer from BLIP observations without Flan-T5."""
         unique_captions = self._rank_by_frequency(obs["captions"])
         unique_answers = self._rank_by_frequency(obs["vqa_answers"])
         is_yn = self._is_yes_no_question(query)
@@ -393,18 +395,19 @@ class VLMEngine:
                 return "No."
             return f"{vqa_top.capitalize()}. {cap_detail.capitalize()}." if cap_detail else vqa_top.capitalize() + "."
 
-        if unique_answers and unique_captions:
-            main_answer = unique_answers[0]
+        if len(unique_captions) >= 3:
+            first = unique_captions[0]
+            rest = unique_captions[1:4]
+            return f"The video shows {first}. Other scenes include {', and '.join(rest)}."
+        if len(unique_captions) == 2:
+            return f"The video shows {unique_captions[0]}, followed by {unique_captions[1]}."
+        if unique_captions:
             scene = unique_captions[0]
-            extra_details = [a for a in unique_answers[1:3] if a.lower() != main_answer.lower()]
-            parts = [f"{main_answer.capitalize()}. The scene shows {scene}."]
-            if extra_details:
-                parts.append("Also observed: " + ", ".join(extra_details) + ".")
-            return " ".join(parts)
+            if unique_answers:
+                return f"The scene shows {scene}. {unique_answers[0].capitalize()}."
+            return f"The scene shows {scene}."
         if unique_answers:
             return ". ".join(a.capitalize() for a in unique_answers[:3]) + "."
-        if unique_captions:
-            return ". ".join(unique_captions[:3]).capitalize() + "."
         return ""
 
     def _answer_with_pipeline(self, query: str, context_frames: list[dict], scope: str) -> str:

@@ -29,13 +29,17 @@
         <div class="sample-dropdown">
           <button id="btnSampleVideo" class="btn btn-primary">Sample Videos &#9662;</button>
           <div class="sample-menu" id="sampleMenu">
+            <button class="sample-item" data-src="/static/samples/trailer_interstellar.mp4">Interstellar Trailer (3 min)</button>
+            <button class="sample-item" data-src="/static/samples/trailer_gta6.mp4">GTA VI Trailer (1.5 min)</button>
+            <button class="sample-item" data-src="/static/samples/trailer_oppenheimer.mp4">Oppenheimer Trailer (3 min)</button>
+            <button class="sample-item" data-src="/static/samples/activity.mp4">Activity Montage</button>
             <button class="sample-item" data-src="/static/samples/cooking.mp4">Cooking Stream</button>
             <button class="sample-item" data-src="/static/samples/surveillance.mp4">Surveillance Feed</button>
-            <button class="sample-item" data-src="/static/samples/activity.mp4">Activity Recording</button>
           </div>
         </div>
         <button id="btnLoadVideo" class="btn btn-secondary">Load File…</button>
         <input type="file" id="videoFileInput" accept="video/*" style="display:none">
+        <button id="btnPause" class="btn btn-secondary" disabled>Pause</button>
         <button id="btnStop" class="btn btn-secondary" disabled>Stop</button>
         <button id="btnReset" class="btn btn-secondary">Reset Memory</button>
         <div class="status-bar">
@@ -62,15 +66,16 @@
 
       <div class="chat-messages" id="chatMessages">
         <div class="message system">
-          <p>Welcome to StreamMind. Start the webcam and ask questions about what you see — past, present, or anything in between.</p>
+          <p>Welcome to StreamMind. Start the live video and ask questions about the past, present, or anything in between.</p>
         </div>
       </div>
 
-      <div class="suggested-questions hidden" id="suggestedQuestions">
+      <div class="chat-bottom-bar" id="suggestedQuestions">
         <span class="suggested-label">Try:</span>
-        <button class="suggested-q" data-q="What do you see right now?">Instant</button>
-        <button class="suggested-q" data-q="What just happened?">Recent</button>
-        <button class="suggested-q" data-q="What has happened so far?">Historical</button>
+        <button class="suggested-q" data-q="What is in the scene right now?">Instant</button>
+        <button class="suggested-q" data-q="What was happening a few seconds ago?">Recent</button>
+        <button class="suggested-q" data-q="How many different scenes have appeared so far?">Historical</button>
+        <button id="btnClearChat" class="btn btn-secondary btn-clear-chat" title="Clear chat history">Clear Chat</button>
       </div>
 
       <form class="chat-input" id="chatForm">

@@ -14,6 +14,7 @@ const btnWebcam = document.getElementById("btnWebcam");
 const btnSampleVideo = document.getElementById("btnSampleVideo");
 const btnLoadVideo = document.getElementById("btnLoadVideo");
 const videoFileInput = document.getElementById("videoFileInput");
+const btnPause = document.getElementById("btnPause");
 const btnStop = document.getElementById("btnStop");
 const btnReset = document.getElementById("btnReset");
 const streamStatus = document.getElementById("streamStatus");
@@ -29,6 +30,7 @@ let streamWs = null;
 let chatWs = null;
 let mediaStream = null;
 let frameTimer = null;
+let isPaused = false;
 
 // ---- WebSocket connections ----
 
@@ -95,6 +97,8 @@ async function startWebcam() {
     videoFeed.srcObject = mediaStream;
     videoOverlay.classList.add("hidden");
     btnWebcam.disabled = true;
+    btnPause.disabled = false;
+    btnPause.classList.add("btn-pause-active");
     btnStop.disabled = false;
 
     connectStreamWs();
@@ -131,6 +135,8 @@ function startVideoPlayback(url) {
     btnWebcam.disabled = true;
     btnSampleVideo.disabled = true;
     btnLoadVideo.disabled = true;
+    btnPause.disabled = false;
+    btnPause.classList.add("btn-pause-active");
     btnStop.disabled = false;
 
     connectStreamWs();
@@ -148,7 +154,21 @@ function loadVideo(file) {
 }
 
 function loadSampleVideo(src) {
-  startVideoPlayback(src || "/static/samples/cooking.mp4");
+  startVideoPlayback(src || "/static/samples/trailer_interstellar.mp4");
+}
+
+function togglePause() {
+  isPaused = !isPaused;
+  btnPause.textContent = isPaused ? "Resume" : "Pause";
+
+  if (isPaused) {
+    if (frameTimer) clearInterval(frameTimer);
+    frameTimer = null;
+    if (videoFeed.src && !videoFeed.srcObject) videoFeed.pause();
+  } else {
+    if (videoFeed.src && !videoFeed.srcObject) videoFeed.play();
+    frameTimer = setInterval(sendFrame, FRAME_INTERVAL_MS);
+  }
 }
 
 function stopStream() {
@@ -172,6 +192,10 @@ function stopStream() {
   if (streamWs) streamWs.close();
   if (chatWs) chatWs.close();
 
+  isPaused = false;
+  btnPause.textContent = "Pause";
+  btnPause.disabled = true;
+  btnPause.classList.remove("btn-pause-active");
   btnWebcam.disabled = false;
   btnSampleVideo.disabled = false;
   btnLoadVideo.disabled = false;
@@ -302,11 +326,6 @@ function togglePresentationMode() {
   document.body.classList.toggle("presentation-mode");
   const active = document.body.classList.contains("presentation-mode");
   btnPresentation.textContent = active ? "Exit Presentation" : "Presentation Mode";
-  if (active) {
-    suggestedQuestions.classList.remove("hidden");
-  } else {
-    suggestedQuestions.classList.add("hidden");
-  }
 }
 
 // ---- Event listeners ----
@@ -343,6 +362,11 @@ btnLoadVideo.addEventListener("click", () => videoFileInput.click());
 videoFileInput.addEventListener("change", (e) => {
   if (e.target.files.length > 0) loadVideo(e.target.files[0]);
 });
+btnPause.addEventListener("click", togglePause);
 btnStop.addEventListener("click", stopStream);
 btnReset.addEventListener("click", resetMemory);
+document.getElementById("btnClearChat").addEventListener("click", () => {
+  chatMessages.innerHTML = '';
+  addMessage("system", "Chat cleared. Ask a new question about the stream.");
+});
 chatForm.addEventListener("submit", handleSubmit);

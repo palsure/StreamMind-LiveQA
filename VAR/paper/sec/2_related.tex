@@ -22,13 +22,14 @@ Dispider~\cite{he2024dispider} disentangles perception, decision, and reaction i
 Despite this progress, none of these methods explicitly reason about which temporal window a user's question refers to. \ours fills that gap with temporal scope classification and scope-aware memory filtering, achieving stronger results on both established and new streaming benchmarks.
 
 \paragraph{Video question answering.}
-NExT-QA~\cite{xiao2021nextqa} tests causal and temporal reasoning on short clips.
+NExT-QA~\cite{xiao2021nextqa} tests causal and temporal reasoning on short clips and reveals an important gap: models that excel at descriptive questions struggle on causal and temporal ones.
+Its per-type evaluation (causal, temporal, descriptive) inspired our per-scope evaluation (instant, recent, historical), and its open-ended QA results show that strong multi-choice models struggle to \emph{generate} correct answers---a challenge \ours inherits through its open-ended Flan-T5 generation stage.
 STAR~\cite{wu2021star} probes situated reasoning with compositional questions, and MVBench~\cite{li2024mvbench} covers a broad range of video understanding tasks.
-EgoSchema~\cite{mangalam2023egoschema} pushes the time horizon to minutes-long egocentric clips from Ego4D~\cite{grauman2022ego4d}, a large-scale egocentric video dataset spanning thousands of hours of daily-life activities.
+EgoSchema~\cite{mangalam2023egoschema} pushes the time horizon to minutes-long egocentric clips from Ego4D~\cite{grauman2022ego4d}, a large-scale egocentric video dataset spanning thousands of hours of daily activities.
 MovieChat~\cite{song2024moviechat} tackles long videos by merging frame features into a fixed-size buffer.
 OVO-Bench~\cite{li2025ovobench} is the closest antecedent: it evaluates Video-LLMs on online video understanding with questions that must be answered causally, without seeing future frames.
-We evaluate on OVO-Bench alongside NExT-QA and EgoSchema to cover a wide spectrum of temporal reasoning tasks.
-LiveQA-Bench, introduced in this paper, complements OVO-Bench by focusing on interactive, scope-labeled questions over long simulated live streams.
+We evaluate on OVO-Bench alongside NExT-QA and EgoSchema to cover a wide spectrum.
+LiveQA-Bench complements these benchmarks by introducing explicit temporal scope labels, enabling per-scope analysis that reveals \emph{which} components matter for \emph{which} temporal reasoning demands.
 
 \paragraph{Two-stage pipelines and temporal memory.}
 Separating perception from language generation lets each stage use a frozen model, removing the need for joint training.

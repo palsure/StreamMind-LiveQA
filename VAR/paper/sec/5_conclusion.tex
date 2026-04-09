@@ -1,21 +1,29 @@
 \section{Conclusion}
 \label{sec:conclusion}
 
-\ours shows that three simple ideas, importance-scored keyframe memory, temporal query routing, and a two-stage perception-synthesis pipeline, are enough to bring video Q\&A into the streaming regime. None of the individual components is exotic. Their value comes from how they fit together: the SKM captures what matters, the TQR tells the generator where to look, and the BLIP + Flan-T5 pipeline produces coherent answers with low latency on a GPU.
-
-On LiveQA-Bench, \ours achieves 39.7\% overall with 59.3\% on instant queries, showing that temporal routing and importance-scored memory work together effectively.
-The 4.8-point gain from $N\!=\!16$ to $N\!=\!64$ confirms that larger memory benefits historical queries in particular.
+\ours shows that three simple ideas---importance-scored keyframe memory, temporal query routing, and a two-stage perception-synthesis pipeline---are enough to bring video Q\&A into the streaming regime.
+Their value comes from how they fit together: the SKM captures what matters, the TQR tells the generator where to look, and the BLIP + Flan-T5 pipeline produces coherent answers with low latency.
 All of this works with frozen pre-trained checkpoints and no end-to-end training.
-Full results on NExT-QA, EgoSchema, OVO-Bench, and Ego4D-NLQ under the streaming protocol, along with baseline comparisons, will be completed for the final version.
+
+Per-scope evaluation on LiveQA-Bench reveals a clear picture:
+instant queries are largely solved (74.1\%) because a single frame suffices;
+historical queries benefit most from importance-scored memory ($+$5.6 over FIFO);
+recent queries remain the hardest scope (33.3\%), bottlenecked by scope misclassification and sparse keyframe coverage.
+Error analysis (\cref{sec:error_analysis}) identifies three failure modes---scope misrouting (39\%), sparse keyframes (32\%), and generic generation (29\%)---each pointing to a concrete upgrade path.
+Published results on OVO-Bench~\cite{li2025ovobench} confirm that streaming models still lag behind offline models, with backward tracing as the weakest category---precisely the regime where importance-scored memory provides the largest gains.
 
 \paragraph{Limitations.}
-The SKM scores frames by visual similarity in CLIP embedding space. Events that matter semantically but look ordinary on camera, a quiet conversation, a subtle hand gesture, receive low scores and risk eviction.
-The TQR bins questions into three discrete scopes via keyword matching. Requests like ``between minutes 3 and 7'' fall outside its vocabulary. A learned scope classifier would cover more ground.
-The scope boundaries are fixed: the recency window $W\!=\!30$\,s does not adapt to the event density of the stream, which may cause scope misalignment in very slow or very fast-paced videos (\cref{sec:method}).
-The system handles only one camera stream. We do not address multi-view fusion.
+The SKM scores frames by visual similarity in CLIP embedding space. Events that matter semantically but look ordinary on camera---a quiet conversation, a subtle hand gesture---receive low scores and risk eviction.
+The TQR bins questions into three discrete scopes via keyword matching. Requests like ``between minutes 3 and 7'' fall outside its vocabulary.
+The recency window $W\!=\!30$\,s does not adapt to event density, which may cause scope misalignment in very slow or very fast-paced videos (\cref{sec:method}).
+The system handles only one camera stream.
 
 \paragraph{Ethics.}
 A system that watches live video and answers arbitrary questions invites misuse for surveillance. Operators should deploy \ours only with informed consent from everyone on camera. The demo processes video locally and stores no frames beyond the active session.
 
 \paragraph{Future work.}
-Four directions seem most promising. First, replacing keyword-based routing with a small trained classifier would handle ambiguous questions better and adapt to varying event densities. Second, accepting audio alongside video frames would give the system a richer picture of the scene. Third, moving from one camera to many, as in a smart-home or retail setting, would test whether the memory and routing design scales. Fourth, integrating the temporal routing mechanism into recent streaming LLMs such as VideoLLM-online~\cite{chen2024videollmonline} or Dispider~\cite{he2024dispider} could combine the strengths of both paradigms.
+Our error analysis points to four promising directions.
+First, replacing keyword-based routing with a learned scope classifier would address the dominant failure mode (39\% of errors) and could handle ambiguous queries that lack temporal cues---a challenge also identified in NExT-QA's analysis of temporal questions~\cite{xiao2021nextqa}.
+Second, an adaptive keyframe insertion threshold that estimates event density from the SKM insertion rate would improve coverage in high-density scenes.
+Third, stronger language generators (e.g.\ instruction-tuned LLMs) could produce more specific answers, reducing the 29\% of errors due to generic generation.
+Fourth, integrating the temporal routing mechanism into recent streaming LLMs such as VideoLLM-online~\cite{chen2024videollmonline} or Dispider~\cite{he2024dispider} could combine the strengths of both paradigms.
