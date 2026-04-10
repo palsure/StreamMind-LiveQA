@@ -34,12 +34,21 @@ let isPaused = false;
 
 // ---- WebSocket connections ----
 
+let _streamReconnectTimer = null;
+let _chatReconnectTimer = null;
+let _stopped = false;
+
 function connectStreamWs() {
+  if (streamWs && streamWs.readyState <= WebSocket.OPEN) return;
   streamWs = new WebSocket(`${WS_BASE}/ws/stream`);
 
   streamWs.onopen = () => {
     streamStatus.className = "status-dot online";
     statusText.textContent = "Connected";
+    if (_streamReconnectTimer) {
+      clearTimeout(_streamReconnectTimer);
+      _streamReconnectTimer = null;
+    }
   };
 
   streamWs.onmessage = (event) => {
@@ -53,15 +62,23 @@ function connectStreamWs() {
   streamWs.onclose = () => {
     streamStatus.className = "status-dot offline";
     statusText.textContent = "Disconnected";
+    if (!_stopped && !_streamReconnectTimer) {
+      _streamReconnectTimer = setTimeout(connectStreamWs, 1000);
+    }
   };
 }
 
 function connectChatWs() {
+  if (chatWs && chatWs.readyState <= WebSocket.OPEN) return;
   chatWs = new WebSocket(`${WS_BASE}/ws/chat`);
 
   chatWs.onopen = () => {
     chatInput.disabled = false;
     btnSend.disabled = false;
+    if (_chatReconnectTimer) {
+      clearTimeout(_chatReconnectTimer);
+      _chatReconnectTimer = null;
+    }
   };
 
   chatWs.onmessage = (event) => {
@@ -82,13 +99,22 @@ function connectChatWs() {
     chatInput.disabled = true;
     btnSend.disabled = true;
     removeTypingIndicator();
+    if (!_stopped && !_chatReconnectTimer) {
+      _chatReconnectTimer = setTimeout(connectChatWs, 1000);
+    }
   };
+}
+
+function ensureConnected() {
+  connectStreamWs();
+  connectChatWs();
 }
 
 // ---- Webcam capture ----
 
 async function startWebcam() {
   try {
+    _stopped = false;
     mediaStream = await navigator.mediaDevices.getUserMedia({
       video: { width: 640, height: 480, facingMode: "user" },
       audio: false,
@@ -124,11 +150,19 @@ function sendFrame() {
 }
 
 function startVideoPlayback(url) {
+  // Reset memory when loading a new video so stale frames don't pollute answers
+  if (streamWs && streamWs.readyState === WebSocket.OPEN) {
+    streamWs.send(JSON.stringify({ type: "reset" }));
+  }
+  memoryCount.textContent = "0";
+  filmstrip.innerHTML = '<div class="filmstrip-empty">No keyframes stored yet</div>';
+
   videoFeed.srcObject = null;
   videoFeed.src = url;
   videoFeed.loop = true;
   videoFeed.muted = true;
 
+  _stopped = false;
   videoFeed.onloadeddata = () => {
     videoFeed.play();
     videoOverlay.classList.add("hidden");
@@ -167,11 +201,16 @@ function togglePause() {
     if (videoFeed.src && !videoFeed.srcObject) videoFeed.pause();
   } else {
     if (videoFeed.src && !videoFeed.srcObject) videoFeed.play();
+    ensureConnected();
     frameTimer = setInterval(sendFrame, FRAME_INTERVAL_MS);
   }
 }
 
 function stopStream() {
+  _stopped = true;
+  if (_streamReconnectTimer) { clearTimeout(_streamReconnectTimer); _streamReconnectTimer = null; }
+  if (_chatReconnectTimer) { clearTimeout(_chatReconnectTimer); _chatReconnectTimer = null; }
+
   if (frameTimer) clearInterval(frameTimer);
   frameTimer = null;
 

@@ -7,9 +7,13 @@ of visual scenarios.  All source clips are free-licensed from Mixkit.
 Demo clips (3):
   cooking.mp4, surveillance.mp4, activity.mp4
 
-Evaluation clips (10 additional):
-  gym.mp4, traffic.mp4, beach.mp4, workshop.mp4, grocery.mp4,
-  classroom.mp4, park_jog.mp4, warehouse.mp4, cafe.mp4, street.mp4
+Evaluation clips (28 additional, downloaded with --eval):
+  Daily-life/indoor: gym, grocery, classroom, warehouse, cafe,
+    workshop, restaurant, library
+  Outdoor/urban: traffic, street, park_jog, night_city, market, aerial_city
+  Sports/action: soccer, basketball, swimming, running, cycling, boxing
+  Trailer-style/cinematic: car_chase, fireworks, concert, sunset
+  Nature/wildlife: beach, forest, underwater, rain
 
 Usage:
   python download_samples.py              # demo clips only
@@ -69,21 +73,10 @@ ACTIVITY_SCENES = [
 # Each covers a distinct visual domain to improve benchmark diversity.
 
 EVAL_VIDEOS = {
+    # ── Daily life & indoor ───────────────────────────────────────────
     "gym.mp4": {
         "url": "https://assets.mixkit.co/videos/34563/34563-720.mp4",
         "description": "Person exercising at a gym with equipment",
-    },
-    "traffic.mp4": {
-        "url": "https://assets.mixkit.co/videos/3888/3888-720.mp4",
-        "description": "Cars driving on a busy highway at daytime",
-    },
-    "beach.mp4": {
-        "url": "https://assets.mixkit.co/videos/1227/1227-720.mp4",
-        "description": "Waves crashing on a sandy beach, coastal view",
-    },
-    "workshop.mp4": {
-        "url": "https://assets.mixkit.co/videos/4866/4866-720.mp4",
-        "description": "Craftsperson working with tools in a workshop",
     },
     "grocery.mp4": {
         "url": "https://assets.mixkit.co/videos/34588/34588-720.mp4",
@@ -93,10 +86,6 @@ EVAL_VIDEOS = {
         "url": "https://assets.mixkit.co/videos/4881/4881-720.mp4",
         "description": "Students and teacher in a classroom setting",
     },
-    "park_jog.mp4": {
-        "url": "https://assets.mixkit.co/videos/2321/2321-720.mp4",
-        "description": "Person jogging through a park with trees",
-    },
     "warehouse.mp4": {
         "url": "https://assets.mixkit.co/videos/21730/21730-720.mp4",
         "description": "Interior of a large warehouse with shelving",
@@ -105,9 +94,105 @@ EVAL_VIDEOS = {
         "url": "https://assets.mixkit.co/videos/4819/4819-720.mp4",
         "description": "Barista preparing coffee in a cafe",
     },
+    "workshop.mp4": {
+        "url": "https://assets.mixkit.co/videos/4866/4866-720.mp4",
+        "description": "Craftsperson working with tools in a workshop",
+    },
+    "restaurant.mp4": {
+        "url": "https://assets.mixkit.co/videos/3296/3296-720.mp4",
+        "description": "Waitstaff serving diners in a restaurant",
+    },
+    "library.mp4": {
+        "url": "https://assets.mixkit.co/videos/4858/4858-720.mp4",
+        "description": "People reading and studying in a library",
+    },
+
+    # ── Outdoor & urban ───────────────────────────────────────────────
+    "traffic.mp4": {
+        "url": "https://assets.mixkit.co/videos/3888/3888-720.mp4",
+        "description": "Cars driving on a busy highway at daytime",
+    },
     "street.mp4": {
         "url": "https://assets.mixkit.co/videos/4397/4397-720.mp4",
         "description": "Pedestrians walking on a busy city sidewalk",
+    },
+    "park_jog.mp4": {
+        "url": "https://assets.mixkit.co/videos/2321/2321-720.mp4",
+        "description": "Person jogging through a park with trees",
+    },
+    "night_city.mp4": {
+        "url": "https://assets.mixkit.co/videos/4064/4064-720.mp4",
+        "description": "City skyline and lights at night, urban timelapse",
+    },
+    "market.mp4": {
+        "url": "https://assets.mixkit.co/videos/2899/2899-720.mp4",
+        "description": "Busy outdoor market with stalls and shoppers",
+    },
+    "aerial_city.mp4": {
+        "url": "https://assets.mixkit.co/videos/3561/3561-720.mp4",
+        "description": "Aerial drone view of a city with buildings",
+    },
+
+    # ── Sports & action ───────────────────────────────────────────────
+    "soccer.mp4": {
+        "url": "https://assets.mixkit.co/videos/2309/2309-720.mp4",
+        "description": "Soccer players passing and shooting on a field",
+    },
+    "basketball.mp4": {
+        "url": "https://assets.mixkit.co/videos/499/499-720.mp4",
+        "description": "Basketball players on court during a game",
+    },
+    "swimming.mp4": {
+        "url": "https://assets.mixkit.co/videos/4277/4277-720.mp4",
+        "description": "Swimmer doing laps in a pool, close-up strokes",
+    },
+    "running.mp4": {
+        "url": "https://assets.mixkit.co/videos/587/587-720.mp4",
+        "description": "Athletes sprinting on a running track",
+    },
+    "cycling.mp4": {
+        "url": "https://assets.mixkit.co/videos/2285/2285-720.mp4",
+        "description": "Cyclist riding fast on a road or trail",
+    },
+    "boxing.mp4": {
+        "url": "https://assets.mixkit.co/videos/12759/12759-720.mp4",
+        "description": "Boxer training with punching bag in a gym",
+    },
+
+    # ── Trailer-style / cinematic ─────────────────────────────────────
+    "car_chase.mp4": {
+        "url": "https://assets.mixkit.co/videos/2538/2538-720.mp4",
+        "description": "Fast car driving on a highway, cinematic shot",
+    },
+    "fireworks.mp4": {
+        "url": "https://assets.mixkit.co/videos/547/547-720.mp4",
+        "description": "Fireworks display exploding over night sky",
+    },
+    "concert.mp4": {
+        "url": "https://assets.mixkit.co/videos/3478/3478-720.mp4",
+        "description": "Concert crowd with stage lights and performer",
+    },
+    "sunset.mp4": {
+        "url": "https://assets.mixkit.co/videos/4779/4779-720.mp4",
+        "description": "Dramatic sunset over landscape with clouds",
+    },
+
+    # ── Nature & wildlife ─────────────────────────────────────────────
+    "beach.mp4": {
+        "url": "https://assets.mixkit.co/videos/1227/1227-720.mp4",
+        "description": "Waves crashing on a sandy beach, coastal view",
+    },
+    "forest.mp4": {
+        "url": "https://assets.mixkit.co/videos/3379/3379-720.mp4",
+        "description": "Dense forest canopy, aerial view through trees",
+    },
+    "underwater.mp4": {
+        "url": "https://assets.mixkit.co/videos/3269/3269-720.mp4",
+        "description": "Underwater coral reef with tropical fish",
+    },
+    "rain.mp4": {
+        "url": "https://assets.mixkit.co/videos/2543/2543-720.mp4",
+        "description": "Heavy rain falling on a street, puddles forming",
     },
 }
 
@@ -202,7 +287,7 @@ def build_activity_video():
 def main():
     parser = argparse.ArgumentParser(description="Download StreamMind sample videos")
     parser.add_argument("--eval", action="store_true",
-                        help="Also download evaluation-only videos (10 extra clips)")
+                        help="Also download evaluation-only videos (28 extra clips)")
     args = parser.parse_args()
 
     print("StreamMind — downloading sample videos\n")
@@ -216,7 +301,7 @@ def main():
     build_activity_video()
 
     if args.eval:
-        print("\n--- Evaluation clips (10 diverse domains) ---")
+        print("\n--- Evaluation clips (28 diverse domains) ---")
         for name, info in EVAL_VIDEOS.items():
             download_file(info["url"], os.path.join(SAMPLE_DIR, name), info["description"])
 

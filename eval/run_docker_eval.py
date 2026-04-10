@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import contextlib
 import io
 import json
 import logging
@@ -264,6 +265,9 @@ def profile_latency(n_runs: int = 10) -> dict:
         "total_query": [],
     }
 
+    amp = (torch.autocast(device_type="cuda", dtype=torch.float16)
+           if torch.cuda.is_available() else contextlib.nullcontext())
+
     log.info(f"Running {n_runs} profiling iterations...")
     for i in range(n_runs):
         _, b64, raw = frames[i % len(frames)]
@@ -284,7 +288,7 @@ def profile_latency(n_runs: int = 10) -> dict:
         if vlm.caption_model is not None:
             inputs = vlm.caption_processor(images=img, return_tensors="pt").to(vlm.device)
             t0 = time.perf_counter()
-            with torch.no_grad():
+            with torch.no_grad(), amp:
                 out = vlm.caption_model.generate(**inputs, max_new_tokens=30)
             vlm.caption_processor.decode(out[0], skip_special_tokens=True)
             timings["blip_caption"].append((time.perf_counter() - t0) * 1000)

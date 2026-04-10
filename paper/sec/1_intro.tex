@@ -31,7 +31,7 @@ A live stream has no end. Feed one into these models and three problems surface:
 
 For evaluation, we compare against published results on OVO-Bench~\cite{li2025ovobench}, a recent online video understanding benchmark, and reference standard results on NExT-QA~\cite{xiao2021nextqa} and EgoSchema~\cite{mangalam2023egoschema} to contextualize our approach.
 
-We introduce \emph{LiveQA-Bench}, 550+ temporally-diverse questions spread across 12 video streams covering diverse visual domains (cooking, traffic, gym, surveillance, and more), with explicit scope labels inspired by the per-type evaluation in NExT-QA~\cite{xiao2021nextqa}.
+We introduce \emph{LiveQA-Bench}, 1{,}500+ temporally-diverse questions spread across 31 video streams covering diverse visual domains---cooking, surveillance, sports (soccer, basketball, swimming, boxing), cinematic action (car chases, fireworks, concerts), nature (forest, underwater, rain), and urban scenes---with explicit scope labels inspired by the per-type evaluation in NExT-QA~\cite{xiao2021nextqa}.
 Per-scope results expose clear performance patterns.
 Instant questions (84.0\%) are easiest because a single frame suffices---even baselines exceed 40\%.
 Historical questions (61.1\%) benefit from the SKM's importance-based retention, showing the largest margin over baselines ($+$33.3 points vs.\ Dispider).

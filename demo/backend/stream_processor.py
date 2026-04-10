@@ -5,6 +5,7 @@ encodes frames with CLIP, and feeds them to the memory manager.
 from __future__ import annotations
 
 import base64
+import contextlib
 import io
 import numpy as np
 from PIL import Image
@@ -56,7 +57,9 @@ class StreamProcessor:
             return np.random.randn(512).astype(np.float32)
 
         inputs = self.processor(images=image, return_tensors="pt").to(self.device)
-        with torch.no_grad():
+        amp = (torch.autocast(device_type="cuda", dtype=torch.float16)
+               if self.device == "cuda" else contextlib.nullcontext())
+        with torch.no_grad(), amp:
             vision_out = self.model.vision_model(pixel_values=inputs["pixel_values"])
             pooled = vision_out.pooler_output
             features = self.model.visual_projection(pooled)

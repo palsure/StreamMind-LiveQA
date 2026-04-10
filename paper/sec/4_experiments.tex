@@ -18,10 +18,15 @@ We reference published full-video results on these benchmarks to contextualize \
 
 \paragraph{LiveQA-Bench (ours).}
 We built LiveQA-Bench to test temporal reasoning under streaming constraints, filling a gap left by existing benchmarks that assume full video access.
-It contains 12 video streams (10--80\,s each) spanning diverse visual domains: cooking, surveillance, gym, traffic, beach, workshop, grocery, classroom, outdoor jogging, warehouse, caf\'{e}, and street scenes.
+It contains 31 video streams (10--80\,s each) organized into five domain groups:
+\emph{daily life} (cooking, surveillance, gym, grocery, classroom, warehouse, caf\'{e}, workshop, restaurant, library),
+\emph{outdoor/urban} (traffic, street, jogging, night city, market, aerial drone),
+\emph{sports} (soccer, basketball, swimming, running, cycling, boxing),
+\emph{cinematic/trailer-style} (car chase, fireworks, concert, sunset), and
+\emph{nature} (beach, forest, underwater, rain).
 Source clips come from Ego4D~\cite{grauman2022ego4d} (egocentric daily activities) and free-licensed Mixkit videos covering the remaining domains.
-This diversity ensures that LiveQA-Bench tests temporal reasoning across a wide range of event densities and visual content---from fast-paced cooking to slow surveillance.
-Over 500 questions are generated automatically from six instant templates, four recent templates, and seven historical templates applied at multiple temporal anchor points per stream.
+This breadth ensures that LiveQA-Bench tests temporal reasoning across a wide range of event densities and visual content---from rapid sports highlights to slow surveillance, from fast-cut cinematic sequences to static nature scenes.
+Over 1{,}500 questions are generated automatically from six instant templates, four recent templates, and seven historical templates applied at multiple temporal anchor points per stream.
 Questions span three temporal scopes, each with distinct reasoning requirements:
 
 \begin{itemize}[itemsep=1pt,leftmargin=*]
@@ -49,7 +54,7 @@ We will release the full benchmark, including stream compositions, questions, gr
     EgoSchema~\cite{mangalam2023egoschema} & 5{,}000 & 5K  & 180 & \xmark & \xmark \\
     OVO-Bench~\cite{li2025ovobench}      & 644     & 2.8K  & var & \cmark & \cmark \\
     \midrule
-    \textbf{LiveQA-Bench}                & 12      & 550+  & 10--80 & \cmark & \cmark \\
+    \textbf{LiveQA-Bench}                & 31      & 1{,}500+ & 10--80 & \cmark & \cmark \\
     \bottomrule
   \end{tabular}
 \end{table}

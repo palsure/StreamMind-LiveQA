@@ -7,9 +7,11 @@ VLM inference engine — two-stage pipeline:
 from __future__ import annotations
 
 import base64
+import contextlib
 import io
 import logging
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 from PIL import Image
 
@@ -59,6 +61,8 @@ class VLMEngine:
         self.llm_tokenizer = None
         self.device = "cpu"
         self.clip_model = None
+        self._pool = ThreadPoolExecutor(max_workers=4)
+        self._caption_cache: dict[int, str] = {}
 
         if not _HAS_TORCH:
             logger.warning("PyTorch not available — VLM engine disabled")
@@ -95,6 +99,12 @@ class VLMEngine:
 
     def set_clip(self, model, processor):
         self.clip_model = model
+
+    def _inference_context(self):
+        """Mixed-precision context for GPU inference."""
+        if self.device == "cuda":
+            return torch.autocast(device_type="cuda", dtype=torch.float16)
+        return contextlib.nullcontext()
 
     def is_ready(self) -> bool:
         return self.vqa_model is not None or self.caption_model is not None
@@ -150,7 +160,7 @@ class VLMEngine:
         if self.vqa_model is None:
             return ""
         inputs = self.vqa_processor(images=image, text=question, return_tensors="pt").to(self.device)
-        with torch.no_grad():
+        with torch.no_grad(), self._inference_context():
             output = self.vqa_model.generate(**inputs, max_new_tokens=30)
         return self.vqa_processor.decode(output[0], skip_special_tokens=True).strip()
 
@@ -179,7 +189,7 @@ class VLMEngine:
         if self.caption_model is None:
             return ""
         inputs = self.caption_processor(images=image, return_tensors="pt").to(self.device)
-        with torch.no_grad():
+        with torch.no_grad(), self._inference_context():
             output = self.caption_model.generate(**inputs, max_new_tokens=50)
         return self.caption_processor.decode(output[0], skip_special_tokens=True).strip()
 
@@ -194,13 +204,23 @@ class VLMEngine:
     }
 
     def _describe_frame(self, image: "Image.Image") -> str:
-        """Generate a natural scene description by combining BLIP caption with VQA details."""
-        caption = self._caption_frame(image)
+        """Generate a natural scene description by combining BLIP caption with VQA details.
+
+        Runs caption and enrichment VQA concurrently (3 model calls overlap
+        on the GPU timeline instead of running back-to-back).
+        """
+        cap_future = self._pool.submit(self._caption_frame, image)
+        enrich_futures = [
+            (tag, self._pool.submit(self._vqa, image, question))
+            for tag, question in self._ENRICHMENT_QUESTIONS
+        ]
+
+        caption = cap_future.result()
         where = ""
         action = ""
 
-        for tag, question in self._ENRICHMENT_QUESTIONS:
-            ans = self._vqa(image, question)
+        for tag, future in enrich_futures:
+            ans = future.result()
             if not ans:
                 continue
             ans_clean = ans.strip().rstrip(".")
@@ -235,17 +255,48 @@ class VLMEngine:
 
         return caption
 
+    # --- Batch inference for multi-frame queries ---
+
+    def _batch_caption_frames(self, images: list["Image.Image"]) -> list[str]:
+        """Caption multiple frames in a single batched forward pass."""
+        if not self.caption_model or not images:
+            return [""] * len(images)
+        inputs = self.caption_processor(
+            images=images, return_tensors="pt", padding=True,
+        ).to(self.device)
+        with torch.no_grad(), self._inference_context():
+            outputs = self.caption_model.generate(**inputs, max_new_tokens=50)
+        return [
+            self.caption_processor.decode(o, skip_special_tokens=True).strip()
+            for o in outputs
+        ]
+
+    def _batch_vqa_frames(self, images: list["Image.Image"], question: str) -> list[str]:
+        """Run the same VQA question across multiple frames in one batch."""
+        if not self.vqa_model or not images:
+            return [""] * len(images)
+        questions = [question] * len(images)
+        inputs = self.vqa_processor(
+            images=images, text=questions, return_tensors="pt", padding=True,
+        ).to(self.device)
+        with torch.no_grad(), self._inference_context():
+            outputs = self.vqa_model.generate(**inputs, max_new_tokens=30)
+        return [
+            self.vqa_processor.decode(o, skip_special_tokens=True).strip()
+            for o in outputs
+        ]
+
     def _synthesize(self, prompt: str) -> str:
         """Use Flan-T5 to generate a natural language response from a prompt."""
         if self.llm is None:
             return ""
         inputs = self.llm_tokenizer(prompt, return_tensors="pt", max_length=512, truncation=True).to(self.device)
-        with torch.no_grad():
+        with torch.no_grad(), self._inference_context():
             output = self.llm.generate(
                 **inputs,
-                max_new_tokens=120,
-                num_beams=4,
-                length_penalty=1.2,
+                max_new_tokens=100,
+                num_beams=2,
+                length_penalty=1.0,
                 no_repeat_ngram_size=3,
             )
         return self.llm_tokenizer.decode(output[0], skip_special_tokens=True).strip()
@@ -291,32 +342,94 @@ class VLMEngine:
 
     def _gather_observations(self, query: str, context_frames: list[dict],
                               scope: str = "historical") -> dict:
-        """Stage 1: Run BLIP across sampled frames to gather visual observations."""
-        sampled = self._sample_frames(context_frames, scope=scope)
-        descriptions = []
-        vqa_answers = []
+        """Stage 1: Run BLIP across sampled frames to gather visual observations.
 
-        for fd in sampled:
-            img = self._decode_frame(fd["frame_base64"])
-            desc = self._describe_frame(img)
+        Single-frame (instant): full enrichment per frame (caption + where/action VQA)
+          with all three model calls running concurrently via _describe_frame.
+        Multi-frame (recent/historical): parallel frame decoding, concurrent
+          batch captioning + batch VQA, with caption caching.
+        """
+        sampled = self._sample_frames(context_frames, scope=scope)
+        if not sampled:
+            return {"captions": [], "vqa_answers": [],
+                    "n_sampled": 0, "n_total": len(context_frames)}
+
+        # Parallel frame decoding (CPU-bound, benefits from threading)
+        decode_futures = [
+            self._pool.submit(self._decode_frame, fd["frame_base64"])
+            for fd in sampled
+        ]
+        images = [f.result() for f in decode_futures]
+
+        if len(images) == 1:
+            desc = self._describe_frame(images[0])
             logger.info(f"Frame description: {desc}")
-            if desc:
-                descriptions.append(desc)
+            descriptions = [desc] if desc else []
 
             if self._asks_about_presence(query):
                 person_in_desc = self._caption_mentions_person(desc) if desc else False
-                count = self._vqa(img, "How many people are in this image?")
+                count = self._vqa(images[0], "How many people are in this image?")
                 has_people = count and count.strip() not in ("0", "none", "no")
-                if person_in_desc or has_people:
-                    vqa_answers.append("yes")
-                else:
-                    vqa_answers.append("no")
+                vqa_answers = ["yes" if (person_in_desc or has_people) else "no"]
             else:
                 clean_q = self._clean_question_for_vqa(query)
-                ans = self._vqa(img, clean_q)
+                ans = self._vqa(images[0], clean_q)
                 logger.info(f"BLIP VQA [{clean_q}]: {ans}")
-                if ans:
-                    vqa_answers.append(ans)
+                vqa_answers = [ans] if ans else []
+        else:
+            # Check caption cache: only batch-caption uncached frames
+            cached_caps: dict[int, str] = {}
+            uncached_idx: list[int] = []
+            for i, fd in enumerate(sampled):
+                fid = fd.get("frame_id")
+                if fid is not None and fid in self._caption_cache:
+                    cached_caps[i] = self._caption_cache[fid]
+                else:
+                    uncached_idx.append(i)
+
+            if self._asks_about_presence(query):
+                if uncached_idx:
+                    new_caps = self._batch_caption_frames(
+                        [images[i] for i in uncached_idx])
+                    for i, cap in zip(uncached_idx, new_caps):
+                        cached_caps[i] = cap
+                        fid = sampled[i].get("frame_id")
+                        if fid is not None:
+                            self._caption_cache[fid] = cap
+                descriptions = [cached_caps.get(i, "") for i in range(len(sampled))]
+                descriptions = [d for d in descriptions if d]
+                vqa_answers = [
+                    "yes" if self._caption_mentions_person(d) else "no"
+                    for d in descriptions
+                ]
+            else:
+                clean_q = self._clean_question_for_vqa(query)
+
+                # Launch captioning (uncached only) and VQA concurrently
+                cap_future = None
+                if uncached_idx:
+                    cap_future = self._pool.submit(
+                        self._batch_caption_frames,
+                        [images[i] for i in uncached_idx])
+                vqa_future = self._pool.submit(
+                    self._batch_vqa_frames, images, clean_q)
+
+                if cap_future:
+                    new_caps = cap_future.result()
+                    for i, cap in zip(uncached_idx, new_caps):
+                        cached_caps[i] = cap
+                        fid = sampled[i].get("frame_id")
+                        if fid is not None:
+                            self._caption_cache[fid] = cap
+
+                descriptions = [cached_caps.get(i, "") for i in range(len(sampled))]
+                descriptions = [d for d in descriptions if d]
+                vqa_answers = [a for a in vqa_future.result() if a]
+
+            for d in descriptions:
+                logger.info(f"Frame description: {d}")
+            for ans in vqa_answers:
+                logger.info(f"BLIP VQA: {ans}")
 
         return {
             "captions": descriptions,
@@ -525,10 +638,13 @@ class VLMEngine:
 
         prompt = self._build_prompt(query, obs, scope)
         logger.info(f"Flan-T5 prompt: {prompt}")
-        t5_answer = self._synthesize(prompt)
-        logger.info(f"Flan-T5 answer: {t5_answer}")
 
+        # Overlap T5 synthesis (GPU) with direct-answer assembly (CPU)
+        t5_future = self._pool.submit(self._synthesize, prompt)
         direct = self._direct_answer_from_observations(query, obs, scope=scope)
+        t5_answer = t5_future.result()
+
+        logger.info(f"Flan-T5 answer: {t5_answer}")
         logger.info(f"Direct answer: {direct}")
 
         if self._is_yes_no_question(query):

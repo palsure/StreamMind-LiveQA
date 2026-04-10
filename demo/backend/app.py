@@ -74,34 +74,54 @@ async def status():
 async def stream_endpoint(websocket: WebSocket):
     """
     WebSocket endpoint for video frame ingestion.
-    Client sends base64-encoded frames; server responds with memory state updates.
+    CLIP encoding runs in a thread so the event loop stays responsive.
+    A periodic keepalive sends memory state even when no new frame is stored.
     """
     await websocket.accept()
     logger.info("Stream WebSocket connected")
 
+    last_mem_push = 0.0
+    KEEPALIVE_INTERVAL = 3.0
+
+    async def _send_memory():
+        nonlocal last_mem_push
+        memory_state = processor.get_memory_state()
+        await websocket.send_json({
+            "type": "memory_update",
+            "memory": memory_state,
+            "memory_size": len(memory_state),
+        })
+        last_mem_push = asyncio.get_event_loop().time()
+
     try:
         while True:
-            data = await websocket.receive_text()
+            try:
+                data = await asyncio.wait_for(
+                    websocket.receive_text(), timeout=KEEPALIVE_INTERVAL)
+            except asyncio.TimeoutError:
+                await _send_memory()
+                continue
+
             msg = json.loads(data)
 
             if msg.get("type") == "frame":
-                result = processor.process_frame(msg["data"])
+                result = await asyncio.to_thread(
+                    processor.process_frame, msg["data"])
 
-                if result.get("stored"):
-                    memory_state = processor.get_memory_state()
-                    await websocket.send_json({
-                        "type": "memory_update",
-                        "memory": memory_state,
-                        "memory_size": len(memory_state),
-                    })
+                now = asyncio.get_event_loop().time()
+                if result.get("stored") or (now - last_mem_push > KEEPALIVE_INTERVAL):
+                    await _send_memory()
 
             elif msg.get("type") == "reset":
                 processor.reset()
+                if vlm:
+                    vlm._caption_cache.clear()
                 await websocket.send_json({
                     "type": "memory_update",
                     "memory": [],
                     "memory_size": 0,
                 })
+                last_mem_push = asyncio.get_event_loop().time()
 
     except WebSocketDisconnect:
         logger.info("Stream WebSocket disconnected")
@@ -129,7 +149,9 @@ async def chat_endpoint(websocket: WebSocket):
                 scope, confidence = vlm.classify_temporal_scope(query)
                 context_frames = processor.get_context_for_query(scope)
 
-                result = vlm.generate_answer(query, context_frames, scope)
+                # Run inference in a thread so frames keep flowing
+                result = await asyncio.to_thread(
+                    vlm.generate_answer, query, context_frames, scope)
                 result["scope_confidence"] = round(confidence, 2)
                 result["type"] = "answer"
 

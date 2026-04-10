@@ -26,14 +26,20 @@
 \section{LiveQA-Bench Construction Details}
 \label{sec:suppl_liveqa}
 
-LiveQA-Bench uses 12 video streams covering diverse visual domains: cooking, surveillance, gym, traffic, beach, workshop, grocery, classroom, outdoor jogging, warehouse, caf\'{e}, and street scenes.
+LiveQA-Bench uses 31 video streams organized into five domain groups:
+\emph{daily life/indoor} (cooking, surveillance, gym, grocery, classroom, warehouse, caf\'{e}, workshop, restaurant, library),
+\emph{outdoor/urban} (traffic, street, jogging, night city, market, aerial drone),
+\emph{sports/action} (soccer, basketball, swimming, running, cycling, boxing),
+\emph{cinematic/trailer-style} (car chase, fireworks, concert, sunset), and
+\emph{nature/wildlife} (beach, forest, underwater, rain).
+The activity composite concatenates four distinct scenes.
 Source clips come from Ego4D~\cite{grauman2022ego4d} and free-licensed Mixkit videos.
-Each stream is 10--80 seconds long; the activity composite concatenates four distinct scenes.
+Each stream is 10--80 seconds long.
 Ground-truth answers are generated automatically: for \textsc{instant} questions, BLIP captions and targeted VQA probes (location, objects) of the target frame serve as ground truth; for \textsc{recent} and \textsc{historical} questions, Flan-T5 summarizes the BLIP captions from the relevant time window into a single reference sentence.
 All random seeds are fixed for reproducibility.
 
 \paragraph{Scope distribution.}
-The 550+ questions divide into approximately 44\% \textsc{instant}, 30\% \textsc{recent}, and 26\% \textsc{historical}.
+The 1{,}500+ questions divide into approximately 44\% \textsc{instant}, 30\% \textsc{recent}, and 26\% \textsc{historical}.
 This distribution is driven by the six instant templates applied at four temporal anchor points per video, four recent templates at up to four time points, and seven historical templates at two to three time points.
 
 \paragraph{Question templates.}
