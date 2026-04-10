@@ -84,12 +84,15 @@ def _resolve_paths(project_root: str | None = None):
     os.makedirs(results_dir, exist_ok=True)
 
     videos = {}
-    for name in ("cooking", "surveillance"):
-        p = sample_dir / "samples" / f"{name}.mp4"
-        if p.exists():
+    samples_dir = sample_dir / "samples"
+    if samples_dir.exists():
+        for p in sorted(samples_dir.glob("*.mp4")):
+            name = p.stem
+            if name.startswith("trailer_"):
+                continue
             videos[name] = str(p)
     sample = sample_dir / "sample.mp4"
-    if sample.exists():
+    if sample.exists() and "sample" not in videos:
         videos["sample"] = str(sample)
 
     return results_dir, videos
@@ -401,6 +404,39 @@ def build_liveqa_bench(vlm: VLMEngine, force_rebuild: bool = False) -> list[QA]:
     all_qa: list[QA] = []
     qid = 0
 
+    # ── Question templates ────────────────────────────────────────────────
+    INSTANT_TEMPLATES = [
+        ("What is happening right now?", "caption"),
+        ("Is anyone in the scene right now?", "person_yn"),
+        ("What can you see in the current frame?", "caption"),
+        ("Describe the current scene.", "caption"),
+        ("What objects are visible at this moment?", "objects"),
+        ("Where does this scene take place?", "location"),
+    ]
+
+    RECENT_TEMPLATES = [
+        "What just happened in the last few seconds?",
+        "What was the person doing recently?",
+        "Describe what occurred in the last moment.",
+        "What changed recently in the scene?",
+    ]
+
+    HISTORICAL_TEMPLATES_OPEN = [
+        "What has happened throughout the stream?",
+        "Summarize everything that has occurred so far.",
+        "Describe the main events in the video so far.",
+    ]
+
+    HISTORICAL_TEMPLATES_YN = [
+        ("Did anything change earlier in the video?", lambda n: n > 1),
+        ("Has there been more than one scene so far?", lambda n: n > 1),
+        ("Did the scene stay the same the entire time?", lambda n: n <= 1),
+    ]
+
+    HISTORICAL_TEMPLATES_COUNT = [
+        "How many different scenes have appeared so far?",
+    ]
+
     for stream_name, video_path in VIDEOS.items():
         dur = video_duration(video_path)
         log.info(f"Surveying {stream_name} ({dur:.1f}s)...")
@@ -424,97 +460,109 @@ def build_liveqa_bench(vlm: VLMEngine, force_rebuild: bool = False) -> list[QA]:
 
         n = len(captions_by_time)
 
-        # --- Instant questions: about a specific frame ---
-        for frac in [0.5, 0.75, 1.0]:
+        # ── Instant questions: about a specific frame ─────────────────
+        sample_fracs = [0.25, 0.5, 0.75, 1.0] if dur >= 10 else [0.5, 1.0]
+        for frac in sample_fracs:
             idx = min(int(n * frac) - 1, n - 1)
             t_frame, cap = captions_by_time[idx]
 
-            # VQA to get specific details
+            target_img = None
             for t, b64, raw in extract_frames(video_path, until_sec=t_frame + 0.5,
                                                sample_fps=1.0):
                 if abs(t - t_frame) < 1.0:
-                    img = Image.fromarray(cv2.cvtColor(raw, cv2.COLOR_BGR2RGB))
-                    who = vlm._vqa(img, "Who is in this image?") if vlm.vqa_model else ""
-                    doing = vlm._vqa(img, "What is the person doing?") if vlm.vqa_model else ""
+                    target_img = Image.fromarray(cv2.cvtColor(raw, cv2.COLOR_BGR2RGB))
                     break
-            else:
-                who = doing = ""
 
-            # Clean GT from BLIP perception
-            has_person = who and who.lower() not in ("no one", "nobody", "none", "no", "")
+            who = ""
+            doing = ""
+            where = ""
+            objects = ""
+            if target_img and vlm.vqa_model:
+                who = vlm._vqa(target_img, "Who is in this image?")
+                doing = vlm._vqa(target_img, "What is the person doing?")
+                where = vlm._vqa(target_img, "Where is this?")
+                objects = vlm._vqa(target_img, "What objects are visible?")
 
-            qid += 1
-            all_qa.append(QA(
-                qid=f"lqa_{qid:04d}", stream=stream_name,
-                timestamp=t_frame, scope="instant",
-                question="What is happening right now?",
-                ground_truth=cap,
-            ))
-            qid += 1
-            all_qa.append(QA(
-                qid=f"lqa_{qid:04d}", stream=stream_name,
-                timestamp=t_frame, scope="instant",
-                question="Is anyone in the scene right now?",
-                ground_truth="yes" if has_person else "no",
-                is_yes_no=True,
-            ))
-            qid += 1
-            all_qa.append(QA(
-                qid=f"lqa_{qid:04d}", stream=stream_name,
-                timestamp=t_frame, scope="instant",
-                question="What can you see in the current frame?",
-                ground_truth=cap,
-            ))
+            has_person = who and who.lower() not in (
+                "no one", "nobody", "none", "no", "")
 
-        # --- Recent questions: summarized last ~15s ---
-        for t_q in [min(dur, 15.0), min(dur, dur * 0.6), dur]:
-            recent_caps = [c for t, c in captions_by_time if t_q - 15.0 <= t <= t_q]
+            for q_template, q_type in INSTANT_TEMPLATES:
+                if q_type == "caption":
+                    gt = cap
+                elif q_type == "person_yn":
+                    gt = "yes" if has_person else "no"
+                elif q_type == "objects":
+                    gt = objects if objects else cap
+                elif q_type == "location":
+                    gt = where if where else cap
+                else:
+                    gt = cap
+
+                qid += 1
+                all_qa.append(QA(
+                    qid=f"lqa_{qid:04d}", stream=stream_name,
+                    timestamp=t_frame, scope="instant",
+                    question=q_template, ground_truth=gt,
+                    is_yes_no=(q_type == "person_yn"),
+                ))
+
+        # ── Recent questions: summarized last ~15s ────────────────────
+        recent_points = [min(dur, 15.0), min(dur, dur * 0.4),
+                         min(dur, dur * 0.7), dur]
+        seen_recent = set()
+        for t_q in recent_points:
+            t_q_r = round(t_q, 1)
+            if t_q_r in seen_recent:
+                continue
+            seen_recent.add(t_q_r)
+
+            recent_caps = [c for t, c in captions_by_time
+                           if t_q - 15.0 <= t <= t_q]
             gt = _summarize_captions(recent_caps, vlm)
 
-            qid += 1
-            all_qa.append(QA(
-                qid=f"lqa_{qid:04d}", stream=stream_name,
-                timestamp=t_q, scope="recent",
-                question="What just happened in the last few seconds?",
-                ground_truth=gt,
-            ))
-            qid += 1
-            all_qa.append(QA(
-                qid=f"lqa_{qid:04d}", stream=stream_name,
-                timestamp=t_q, scope="recent",
-                question="What was the person doing recently?",
-                ground_truth=gt,
-            ))
+            for q_template in RECENT_TEMPLATES:
+                qid += 1
+                all_qa.append(QA(
+                    qid=f"lqa_{qid:04d}", stream=stream_name,
+                    timestamp=t_q, scope="recent",
+                    question=q_template, ground_truth=gt,
+                ))
 
-        # --- Historical questions: summarized full stream ---
+        # ── Historical questions: summarized full stream ──────────────
         all_caps = [c for _, c in captions_by_time]
         full_gt = _summarize_captions(all_caps, vlm)
         n_unique = len(set(normalize_text(c) for c in all_caps))
 
-        for t_q in [dur, dur * 0.8]:
-            qid += 1
-            all_qa.append(QA(
-                qid=f"lqa_{qid:04d}", stream=stream_name,
-                timestamp=t_q, scope="historical",
-                question="What has happened throughout the stream?",
-                ground_truth=full_gt,
-            ))
-            qid += 1
-            did_change = n_unique > 1
-            all_qa.append(QA(
-                qid=f"lqa_{qid:04d}", stream=stream_name,
-                timestamp=t_q, scope="historical",
-                question="Did anything change earlier in the video?",
-                ground_truth="yes" if did_change else "no",
-                is_yes_no=True,
-            ))
-            qid += 1
-            all_qa.append(QA(
-                qid=f"lqa_{qid:04d}", stream=stream_name,
-                timestamp=t_q, scope="historical",
-                question="How many different scenes have appeared so far?",
-                ground_truth=f"{min(n_unique, 5)} different scenes",
-            ))
+        hist_points = [dur, dur * 0.8]
+        if dur >= 20:
+            hist_points.append(dur * 0.6)
+        for t_q in hist_points:
+            for q_template in HISTORICAL_TEMPLATES_OPEN:
+                qid += 1
+                all_qa.append(QA(
+                    qid=f"lqa_{qid:04d}", stream=stream_name,
+                    timestamp=t_q, scope="historical",
+                    question=q_template, ground_truth=full_gt,
+                ))
+
+            for q_template, yn_fn in HISTORICAL_TEMPLATES_YN:
+                qid += 1
+                all_qa.append(QA(
+                    qid=f"lqa_{qid:04d}", stream=stream_name,
+                    timestamp=t_q, scope="historical",
+                    question=q_template,
+                    ground_truth="yes" if yn_fn(n_unique) else "no",
+                    is_yes_no=True,
+                ))
+
+            for q_template in HISTORICAL_TEMPLATES_COUNT:
+                qid += 1
+                all_qa.append(QA(
+                    qid=f"lqa_{qid:04d}", stream=stream_name,
+                    timestamp=t_q, scope="historical",
+                    question=q_template,
+                    ground_truth=f"{min(n_unique, 5)} different scenes",
+                ))
 
     log.info(f"Built {len(all_qa)} QA pairs across {len(VIDEOS)} streams")
 

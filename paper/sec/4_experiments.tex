@@ -18,14 +18,16 @@ We reference published full-video results on these benchmarks to contextualize \
 
 \paragraph{LiveQA-Bench (ours).}
 We built LiveQA-Bench to test temporal reasoning under streaming constraints, filling a gap left by existing benchmarks that assume full video access.
-It contains 50 simulated live streams (5 to 30 minutes each), constructed by joining clips from Ego4D~\cite{grauman2022ego4d}---a large-scale egocentric video dataset spanning thousands of hours of daily activities---and Kinetics action recognition clips with natural transitions.
-The use of Ego4D clips ensures that LiveQA-Bench inherits realistic egocentric scenarios (cooking, object manipulation, navigation) that demand the kind of temporal reasoning absent from static VideoQA benchmarks.
-500 questions (10 per stream) span three temporal scopes, each with distinct reasoning requirements:
+It contains 12 video streams (10--80\,s each) spanning diverse visual domains: cooking, surveillance, gym, traffic, beach, workshop, grocery, classroom, outdoor jogging, warehouse, caf\'{e}, and street scenes.
+Source clips come from Ego4D~\cite{grauman2022ego4d} (egocentric daily activities) and free-licensed Mixkit videos covering the remaining domains.
+This diversity ensures that LiveQA-Bench tests temporal reasoning across a wide range of event densities and visual content---from fast-paced cooking to slow surveillance.
+Over 500 questions are generated automatically from six instant templates, four recent templates, and seven historical templates applied at multiple temporal anchor points per stream.
+Questions span three temporal scopes, each with distinct reasoning requirements:
 
 \begin{itemize}[itemsep=1pt,leftmargin=*]
-  \item \textbf{Instantaneous} (170 Qs): targets the present frame---\emph{``What is happening right now?''}, \emph{``Is anyone in the scene?''}. Answerable from the latest keyframe alone.
-  \item \textbf{Recent} (180 Qs): targets the last 30\,s---\emph{``What just happened?''}, \emph{``What was the person doing recently?''}. Requires aggregating a short window of context.
-  \item \textbf{Historical} (150 Qs): targets the full stream---\emph{``How many different scenes have appeared?''}, \emph{``Did anything change earlier?''}. Requires long-range memory over the entire video.
+  \item \textbf{Instantaneous} ($\sim$44\%): targets the present frame---\emph{``What is happening right now?''}, \emph{``Where does this scene take place?''}, \emph{``What objects are visible?''}. Answerable from the latest keyframe alone.
+  \item \textbf{Recent} ($\sim$30\%): targets the last 30\,s---\emph{``What just happened?''}, \emph{``What changed recently in the scene?''}. Requires aggregating a short window of context.
+  \item \textbf{Historical} ($\sim$26\%): targets the full stream---\emph{``How many different scenes have appeared?''}, \emph{``Summarize everything that has occurred so far.''}. Requires long-range memory over the entire video.
 \end{itemize}
 
 \noindent Each question carries a ground-truth answer and a scope label.
@@ -47,7 +49,7 @@ We will release the full benchmark, including stream compositions, questions, gr
     EgoSchema~\cite{mangalam2023egoschema} & 5{,}000 & 5K  & 180 & \xmark & \xmark \\
     OVO-Bench~\cite{li2025ovobench}      & 644     & 2.8K  & var & \cmark & \cmark \\
     \midrule
-    \textbf{LiveQA-Bench}                & 50      & 500   & 300--1800 & \cmark & \cmark \\
+    \textbf{LiveQA-Bench}                & 12      & 550+  & 10--80 & \cmark & \cmark \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -76,7 +78,7 @@ For OVO-Bench we include published results for \textbf{Qwen2-VL-7B}~\cite{wang20
 \paragraph{Implementation details.}
 \ours uses CLIP ViT-B/32 as the vision encoder, BLIP-base for captioning and VQA, and Flan-T5-base as the language synthesis model.
 We resize input frames to $224\times224$ for CLIP and $384\times384$ for BLIP. Memory capacity $N\!=\!64$. TQR recent window $W\!=\!30$\,s.
-We evaluate on a 63-question subset of LiveQA-Bench (2 streams covering cooking and surveillance domains, with all three scope types well represented). All \ours results are reported on an NVIDIA T4 GPU (Google Colab) with fixed random seeds for reproducibility; the full 500-question evaluation will be included in the public release.
+All \ours results on LiveQA-Bench are reported on an NVIDIA T4 GPU (Google Colab) with fixed random seeds (seed=42) for reproducibility.
 
 
 \subsection{Main Results}

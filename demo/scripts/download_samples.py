@@ -1,20 +1,24 @@
 """
-Download sample videos for the StreamMind demo.
+Download sample videos for the StreamMind demo and evaluation.
 
-Three scenarios match the qualitative examples in the paper:
-  1. cooking.mp4      – Kitchen cooking stream (single scene, good for latency demos)
-  2. surveillance.mp4  – Empty office space (single scene, no people)
-  3. activity.mp4      – Multi-scene composite (RECOMMENDED for demo)
-     Built by concatenating 4 short clips with distinct visual content,
-     so different temporal scopes return different answers.
+Videos cover diverse domains so LiveQA-Bench questions span a wide range
+of visual scenarios.  All source clips are free-licensed from Mixkit.
+
+Demo clips (3):
+  cooking.mp4, surveillance.mp4, activity.mp4
+
+Evaluation clips (10 additional):
+  gym.mp4, traffic.mp4, beach.mp4, workshop.mp4, grocery.mp4,
+  classroom.mp4, park_jog.mp4, warehouse.mp4, cafe.mp4, street.mp4
 
 Usage:
-  python download_samples.py
+  python download_samples.py              # demo clips only
+  python download_samples.py --eval       # demo + evaluation clips
 
-Requires ffmpeg on PATH for building the composite activity.mp4.
-All source clips are free-licensed from Mixkit.
+Requires ffmpeg on PATH for building composite videos.
 """
 
+import argparse
 import os
 import subprocess
 import sys
@@ -25,14 +29,16 @@ import shutil
 SAMPLE_DIR = os.path.join(os.path.dirname(__file__), "..", "frontend", "samples")
 os.makedirs(SAMPLE_DIR, exist_ok=True)
 
+# ── Demo videos (always downloaded) ──────────────────────────────────────
+
 VIDEOS = {
     "cooking.mp4": {
         "url": "https://assets.mixkit.co/videos/43059/43059-720.mp4",
-        "description": "Cook preparing food in a kitchen pan (Free, Mixkit)",
+        "description": "Cook preparing food in a kitchen pan",
     },
     "surveillance.mp4": {
         "url": "https://assets.mixkit.co/videos/15478/15478-720.mp4",
-        "description": "Empty office space, no people (Free, Mixkit)",
+        "description": "Empty office space, no people",
     },
 }
 
@@ -40,12 +46,12 @@ ACTIVITY_SCENES = [
     {
         "id": "scene_office",
         "url": "https://assets.mixkit.co/videos/25591/25591-720.mp4",
-        "description": "Man doing different activities at home (eating, cleaning, computer)",
+        "description": "Man doing different activities at home",
     },
     {
         "id": "scene_dog",
         "url": "https://assets.mixkit.co/videos/1211/1211-720.mp4",
-        "description": "Dog playing in slow motion (studio shot)",
+        "description": "Dog playing in slow motion",
     },
     {
         "id": "scene_park",
@@ -58,6 +64,52 @@ ACTIVITY_SCENES = [
         "description": "Cook preparing food in a kitchen",
     },
 ]
+
+# ── Evaluation videos (downloaded with --eval) ──────────────────────────
+# Each covers a distinct visual domain to improve benchmark diversity.
+
+EVAL_VIDEOS = {
+    "gym.mp4": {
+        "url": "https://assets.mixkit.co/videos/34563/34563-720.mp4",
+        "description": "Person exercising at a gym with equipment",
+    },
+    "traffic.mp4": {
+        "url": "https://assets.mixkit.co/videos/3888/3888-720.mp4",
+        "description": "Cars driving on a busy highway at daytime",
+    },
+    "beach.mp4": {
+        "url": "https://assets.mixkit.co/videos/1227/1227-720.mp4",
+        "description": "Waves crashing on a sandy beach, coastal view",
+    },
+    "workshop.mp4": {
+        "url": "https://assets.mixkit.co/videos/4866/4866-720.mp4",
+        "description": "Craftsperson working with tools in a workshop",
+    },
+    "grocery.mp4": {
+        "url": "https://assets.mixkit.co/videos/34588/34588-720.mp4",
+        "description": "Person shopping for produce in a grocery store",
+    },
+    "classroom.mp4": {
+        "url": "https://assets.mixkit.co/videos/4881/4881-720.mp4",
+        "description": "Students and teacher in a classroom setting",
+    },
+    "park_jog.mp4": {
+        "url": "https://assets.mixkit.co/videos/2321/2321-720.mp4",
+        "description": "Person jogging through a park with trees",
+    },
+    "warehouse.mp4": {
+        "url": "https://assets.mixkit.co/videos/21730/21730-720.mp4",
+        "description": "Interior of a large warehouse with shelving",
+    },
+    "cafe.mp4": {
+        "url": "https://assets.mixkit.co/videos/4819/4819-720.mp4",
+        "description": "Barista preparing coffee in a cafe",
+    },
+    "street.mp4": {
+        "url": "https://assets.mixkit.co/videos/4397/4397-720.mp4",
+        "description": "Pedestrians walking on a busy city sidewalk",
+    },
+}
 
 
 def download_file(url, dest, description=""):
@@ -148,19 +200,28 @@ def build_activity_video():
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Download StreamMind sample videos")
+    parser.add_argument("--eval", action="store_true",
+                        help="Also download evaluation-only videos (10 extra clips)")
+    args = parser.parse_args()
+
     print("StreamMind — downloading sample videos\n")
     print(f"Output directory: {os.path.abspath(SAMPLE_DIR)}\n")
 
-    print("--- Single-scene clips ---")
+    print("--- Demo clips ---")
     for name, info in VIDEOS.items():
         download_file(info["url"], os.path.join(SAMPLE_DIR, name), info["description"])
 
     print("\n--- Multi-scene composite (recommended for demo) ---")
     build_activity_video()
 
-    print("\nDone.")
-    print("For the best demo, use 'Activity Recording' — it has multiple")
-    print("distinct scenes so different temporal scopes give different answers.")
+    if args.eval:
+        print("\n--- Evaluation clips (10 diverse domains) ---")
+        for name, info in EVAL_VIDEOS.items():
+            download_file(info["url"], os.path.join(SAMPLE_DIR, name), info["description"])
+
+    n_files = len([f for f in os.listdir(SAMPLE_DIR) if f.endswith(".mp4")])
+    print(f"\nDone. {n_files} videos in {os.path.abspath(SAMPLE_DIR)}")
 
 
 if __name__ == "__main__":

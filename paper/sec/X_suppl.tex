@@ -26,19 +26,22 @@
 \section{LiveQA-Bench Construction Details}
 \label{sec:suppl_liveqa}
 
-LiveQA-Bench streams are constructed by temporally concatenating clips from Ego4D~\cite{grauman2022ego4d} (egocentric daily activities: cooking, navigation, object manipulation) and Kinetics (action recognition: sports, household tasks, outdoor activities) with natural transitions.
-Each stream is 5--30 minutes long and contains 3--8 scene changes.
-Ground-truth answers are generated automatically: for \textsc{instant} questions, BLIP captions of the target frame serve as ground truth; for \textsc{recent} and \textsc{historical} questions, Flan-T5 summarizes the BLIP captions from the relevant time window into a single reference sentence.
-We verify all ground-truth answers manually and discard ambiguous or unanswerable questions.
+LiveQA-Bench uses 12 video streams covering diverse visual domains: cooking, surveillance, gym, traffic, beach, workshop, grocery, classroom, outdoor jogging, warehouse, caf\'{e}, and street scenes.
+Source clips come from Ego4D~\cite{grauman2022ego4d} and free-licensed Mixkit videos.
+Each stream is 10--80 seconds long; the activity composite concatenates four distinct scenes.
+Ground-truth answers are generated automatically: for \textsc{instant} questions, BLIP captions and targeted VQA probes (location, objects) of the target frame serve as ground truth; for \textsc{recent} and \textsc{historical} questions, Flan-T5 summarizes the BLIP captions from the relevant time window into a single reference sentence.
+All random seeds are fixed for reproducibility.
 
 \paragraph{Scope distribution.}
-The 500 questions divide into 170 \textsc{instant} (34\%), 180 \textsc{recent} (36\%), and 150 \textsc{historical} (30\%).
-This distribution reflects the expected usage pattern: users ask about the present most often, about the recent past frequently, and about the full history occasionally.
+The 550+ questions divide into approximately 44\% \textsc{instant}, 30\% \textsc{recent}, and 26\% \textsc{historical}.
+This distribution is driven by the six instant templates applied at four temporal anchor points per video, four recent templates at up to four time points, and seven historical templates at two to three time points.
 
 \paragraph{Question templates.}
-Instant questions follow templates like \emph{``What is happening right now?''}, \emph{``Is anyone in the scene?''}, and \emph{``What can you see in the current frame?''}.
-Recent questions use \emph{``What just happened?''}, \emph{``What was the person doing recently?''}, and \emph{``What changed in the last few seconds?''}.
-Historical questions use \emph{``How many different scenes have appeared so far?''}, \emph{``Did anything change earlier?''}, and \emph{``What has happened throughout the stream?''}.
+Six instant templates: \emph{``What is happening right now?''}, \emph{``Is anyone in the scene right now?''} (yes/no), \emph{``What can you see in the current frame?''}, \emph{``Describe the current scene.''}, \emph{``What objects are visible at this moment?''}, \emph{``Where does this scene take place?''}.
+
+Four recent templates: \emph{``What just happened in the last few seconds?''}, \emph{``What was the person doing recently?''}, \emph{``Describe what occurred in the last moment.''}, \emph{``What changed recently in the scene?''}.
+
+Seven historical templates: three open-ended (\emph{``What has happened throughout the stream?''}, \emph{``Summarize everything that has occurred so far.''}, \emph{``Describe the main events in the video so far.''}), three yes/no (\emph{``Did anything change earlier?''}, \emph{``Has there been more than one scene?''}, \emph{``Did the scene stay the same?''}), and one counting (\emph{``How many different scenes have appeared?''}).
 
 \section{Additional Qualitative Examples}
 \label{sec:suppl_qual}
