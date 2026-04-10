@@ -1,11 +1,10 @@
 \begin{abstract}
-Current video-language models assume the full recording is available before answering a question. They cannot operate on a live camera feed.
-We present \ours, a streaming system for interactive question answering on video that is still in progress.
-Its Semantic Keyframe Memory (SKM) keeps at most $N$ frames, scoring each by visual novelty and temporal coverage so that important moments stay and redundant ones get evicted.
-A Temporal Query Router (TQR) classifies each question as \emph{instantaneous}, \emph{recent}, or \emph{historical} and passes only the matching time slice to a two-stage Stream-Fused Generator (SFG): BLIP extracts captions and visual answers from selected keyframes, and Flan-T5 fuses those observations into a single response.
-To drive evaluation, we introduce \emph{LiveQA-Bench}, a 1{,}500+ question benchmark over 31 diverse video streams---spanning sports highlights, cinematic action, nature, urban, and daily-life scenarios---with per-question scope labels; the first VideoQA benchmark that enforces causal access with explicit temporal scope annotations.
-Per-scope results on a T4 GPU reveal clear differentiation: \ours scores 84.0\% on instant queries where a single frame suffices, 61.1\% on historical queries requiring long-range memory, and 33.3\% on recent queries---the hardest scope for all methods.
-Ablation by question type shows that SKM benefits historical queries ($+$1.8 points over FIFO), while the keyword-based TQR hurts recent queries by misrouting; disabling it raises overall accuracy to 67.5\% at the cost of 34\% more latency, motivating a learned scope classifier.
-Comparison with published results on OVO-Bench and EgoSchema confirms that streaming-aware architectures substantially outperform adapted offline models, and that backward tracing---where importance-scored memory excels---remains the key bottleneck.
-Code, LiveQA-Bench, and a live webcam demo will be released.
+Current video-language models assume the full recording is available before answering a question---they cannot operate on a live camera feed.
+We present \ours, a streaming system for interactive QA on video that is still in progress.
+Its Semantic Keyframe Memory (SKM) retains at most $N$ frames scored by visual novelty and temporal coverage.
+A Temporal Query Router (TQR) classifies each question as \emph{instantaneous}, \emph{recent}, or \emph{historical} and passes the matching time slice to a two-stage generator: BLIP extracts captions and visual answers, Flan-T5 fuses them into a response.
+We introduce \emph{LiveQA-Bench}, a benchmark of 55 diverse video streams with per-question scope labels---the first VideoQA benchmark enforcing causal access with temporal scope annotations.
+On an A100 GPU, \ours achieves 54.8\% overall accuracy at 254\,ms average latency (historical 77.1\%, instant 46.2\%, recent 43.2\%).
+Ablations validate each component: removing TQR drops accuracy 3.9 points, replacing SKM with FIFO costs 1.2 points, and compact memory ($N\!=\!16$) achieves the best accuracy (57.2\%).
+Code, benchmark, and a live webcam demo will be released.
 \end{abstract}

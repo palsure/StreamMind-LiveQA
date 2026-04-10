@@ -3,47 +3,41 @@
 
 A security operator watches a live camera feed and asks: \emph{``Did anyone enter the building in the last five minutes?''}
 Someone wearing smart glasses asks: \emph{``What did I put in my bag?''}
-Both questions target a video stream that is still running. Standard video question answering (VideoQA) cannot help here. It assumes the full video is available before inference starts.
+Both questions target a video stream that is still running. Standard video question answering (VideoQA) cannot help here---it assumes the full video is available before inference starts.
 
-Recent models like Video-ChatGPT~\cite{maaz2023videochatgpt}, VideoLLaVA~\cite{lin2023videollava}, and LLaVA-Next-Video~\cite{zhang2024llavanextvideo} score well on standard VideoQA benchmarks, but they share one assumption: the video is finite and fully available at query time.
+Recent models like Video-ChatGPT~\cite{maaz2023videochatgpt}, VideoLLaVA~\cite{lin2023videollava}, and LLaVA-Next-Video~\cite{zhang2024llavanextvideo} share one assumption: the video is finite and fully available at query time.
 Frame sampling, global temporal pooling, and bidirectional attention all depend on that assumption.
 A live stream has no end. Feed one into these models and three problems surface:
 
 \begin{enumerate}[leftmargin=*,itemsep=2pt]
-    \item \textbf{Unbounded memory.} Encoding every frame from a continuous stream means memory and compute grow linearly. Hardware limits will stop the system.
-    \item \textbf{Temporal ambiguity.} \emph{``What is happening?''} targets the present. \emph{``Was there a dog earlier?''} targets the past. Without explicit temporal reasoning, the model mixes these contexts and hallucinates.
-    \item \textbf{Latency.} Re-processing the full stream for each query adds delay. Users expect sub-second responses.
+    \item \textbf{Unbounded memory.} Encoding every frame from a continuous stream means memory and compute grow linearly without bound.
+    \item \textbf{Temporal ambiguity.} \emph{``What is happening?''} targets the present; \emph{``Was there a dog earlier?''} targets the past. Without explicit temporal reasoning, the model mixes these contexts.
+    \item \textbf{Latency.} Re-processing the full stream for each query adds delay that precludes real-time interaction.
 \end{enumerate}
 
 \textbf{\ours} solves all three. It is a streaming vision-language system for interactive Q\&A on live video, built from three components:
 
 \begin{enumerate}[leftmargin=*,itemsep=2pt]
     \item \textbf{Semantic Keyframe Memory (SKM).}
-    A fixed bank of $N$ entries stores the most informative frames, scored by visual novelty and temporal coverage. High-scoring frames enter; low-scoring stored frames get evicted.
+    A fixed bank of $N$ entries stores the most informative frames, scored by visual novelty and temporal coverage.
 
     \item \textbf{Temporal Query Router (TQR).}
-    The TQR classifies each question into one of three scopes---\emph{instantaneous}, \emph{recent}, or \emph{historical}---and hands only the matching memory slice to the answer stage.
+    Classifies each question into one of three scopes---\emph{instantaneous}, \emph{recent}, or \emph{historical}---and passes only the matching memory slice forward.
 
     \item \textbf{Stream-Fused Generator (SFG).}
-    BLIP~\cite{li2022blip} runs captioning and VQA on each filtered keyframe; Flan-T5~\cite{chung2022flanT5} then fuses those observations into a single response.
-    Non-neural components run in under 1\,ms; on a T4 GPU the average per-query latency is 4.1\,s.
+    BLIP~\cite{li2022blip} runs captioning and VQA on filtered keyframes; Flan-T5~\cite{chung2022flanT5} fuses those observations into a single response (254\,ms average on A100 GPU).
 \end{enumerate}
 
-For evaluation, we compare against published results on OVO-Bench~\cite{li2025ovobench}, a recent online video understanding benchmark, and reference standard results on NExT-QA~\cite{xiao2021nextqa} and EgoSchema~\cite{mangalam2023egoschema} to contextualize our approach.
-
-We introduce \emph{LiveQA-Bench}, 1{,}500+ temporally-diverse questions spread across 31 video streams covering diverse visual domains---cooking, surveillance, sports (soccer, basketball, swimming, boxing), cinematic action (car chases, fireworks, concerts), nature (forest, underwater, rain), and urban scenes---with explicit scope labels inspired by the per-type evaluation in NExT-QA~\cite{xiao2021nextqa}.
-Per-scope results expose clear performance patterns.
-Instant questions (84.0\%) are easiest because a single frame suffices---even baselines exceed 40\%.
-Historical questions (61.1\%) benefit from the SKM's importance-based retention, showing the largest margin over baselines ($+$33.3 points vs.\ Dispider).
-Recent questions (33.3\%) remain the hardest scope for all methods, mirroring the challenge NExT-QA reports for temporal reasoning: models struggle when the relevant context must be localized within a narrow window.
-Ablation by scope type reveals that SKM primarily aids historical queries while the keyword-based TQR primarily hurts recent queries through misrouting.
-Published results on OVO-Bench confirm a large gap between offline and streaming models; our architecture targets this gap with importance-scored memory and temporal routing.
+We introduce \emph{LiveQA-Bench}, spanning 55 diverse video streams with explicit scope labels---the first VideoQA benchmark that enforces causal access with temporal scope annotations.
+Per-scope results expose clear patterns: historical questions score highest (77.1\%) because the full SKM provides rich context; instant (46.2\%) depends on single-frame perception; recent (43.2\%) requires localizing context within a 30\,s window.
+Ablations validate every component: removing TQR drops accuracy 3.9 points (instant collapses 15.3 points), replacing SKM with FIFO costs 1.2 points, and compact memory ($N\!=\!16$) achieves the best accuracy (57.2\%).
+Published results on OVO-Bench~\cite{li2025ovobench} confirm a large gap between offline and streaming models; our architecture targets this gap with importance-scored memory and temporal routing.
 
 To summarize our contributions:
 \begin{enumerate}[leftmargin=*,itemsep=1pt]
   \item We formalize the \emph{streaming VideoQA} task with a causal access constraint and temporal scope taxonomy, and contribute LiveQA-Bench with per-scope annotations.
   \item We propose \ours, combining importance-scored memory, temporal routing, and a two-stage perception-synthesis pipeline, all using frozen pre-trained checkpoints.
-  \item Extensive per-scope analysis identifies specific failure modes---scope misclassification, sparse keyframes, generic generation---and points to concrete improvements.
+  \item Per-scope error analysis identifies specific failure modes---scope misclassification, sparse keyframes, generic generation---and points to concrete improvements.
 \end{enumerate}
 
 A live web demo lets users ask questions about their own webcam feed in real time.

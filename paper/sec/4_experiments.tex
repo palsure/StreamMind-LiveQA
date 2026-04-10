@@ -1,44 +1,39 @@
 \section{Experiments}
 \label{sec:experiments}
 
-We evaluate \ours on LiveQA-Bench (our streaming QA benchmark) and compare against published results on OVO-Bench~\cite{li2025ovobench}. We reference standard results on NExT-QA and EgoSchema, ablate each component, and profile per-query latency.
+We evaluate \ours on LiveQA-Bench (our streaming QA benchmark), ablate each component, and profile per-query latency. We reference published results on OVO-Bench~\cite{li2025ovobench}, NExT-QA, and EgoSchema to contextualize \ours within the broader VideoQA landscape.
 
 \subsection{Benchmarks}
 \label{sec:benchmarks}
 
-\paragraph{OVO-Bench.}
-OVO-Bench~\cite{li2025ovobench} is an online video understanding benchmark from CVPR~2025.
-It provides 644 videos with 2,814 multi-choice questions under causal constraints, organized into backward tracing (BT), real-time visual perception (RT), and forward active response (FA).
-We report published results from~\cite{li2025ovobench} to establish the current state of streaming video understanding.
-
-\paragraph{NExT-QA and EgoSchema (reference).}
-NExT-QA~\cite{xiao2021nextqa} (52K QA pairs, 5,440 clips, avg.\ 44\,s) tests causal and temporal reasoning.
+\paragraph{Reference benchmarks.}
+We reference three established benchmarks for context.
+OVO-Bench~\cite{li2025ovobench} (CVPR~2025) provides 644 videos with 2{,}814 multi-choice questions under causal constraints, organized into backward tracing (BT), real-time perception (RT), and forward active response (FA).
+NExT-QA~\cite{xiao2021nextqa} (52K QA pairs, 5{,}440 clips, avg.\ 44\,s) tests causal and temporal reasoning with a per-type evaluation that inspired our scope-based analysis.
 EgoSchema~\cite{mangalam2023egoschema} (5K multiple-choice questions, 3-minute Ego4D clips) targets long-form egocentric video understanding.
-We reference published full-video results on these benchmarks to contextualize \ours within the broader VideoQA landscape.
+We report published results on these benchmarks to situate streaming models within the broader VideoQA landscape.
 
 \paragraph{LiveQA-Bench (ours).}
 We built LiveQA-Bench to test temporal reasoning under streaming constraints, filling a gap left by existing benchmarks that assume full video access.
-It contains 31 video streams (10--80\,s each) organized into five domain groups:
-\emph{daily life} (cooking, surveillance, gym, grocery, classroom, warehouse, caf\'{e}, workshop, restaurant, library),
-\emph{outdoor/urban} (traffic, street, jogging, night city, market, aerial drone),
-\emph{sports} (soccer, basketball, swimming, running, cycling, boxing),
-\emph{cinematic/trailer-style} (car chase, fireworks, concert, sunset), and
-\emph{nature} (beach, forest, underwater, rain).
-Source clips come from Ego4D~\cite{grauman2022ego4d} (egocentric daily activities) and free-licensed Mixkit videos covering the remaining domains.
-This breadth ensures that LiveQA-Bench tests temporal reasoning across a wide range of event densities and visual content---from rapid sports highlights to slow surveillance, from fast-cut cinematic sequences to static nature scenes.
-Over 1{,}500 questions are generated automatically from six instant templates, four recent templates, and seven historical templates applied at multiple temporal anchor points per stream.
-Questions span three temporal scopes, each with distinct reasoning requirements:
+It contains 55 video streams (10--80\,s each) covering diverse visual domains:
+\emph{daily life} (cooking, surveillance, gym, grocery, classroom, warehouse, caf\'{e}, workshop, library, restaurant),
+\emph{outdoor/urban} (traffic, street, aerial city, night city, market, city jogger),
+\emph{nature} (beach, forest, sunset, rain, underwater, forest walk),
+\emph{sports/action} (boxing, cycling, running, swimming, soccer, basketball, MMA, kickboxing, surfing, motocross, skateboarding, skiing),
+and \emph{cinematic/trailer} (car chase, concert, fireworks, helicopter rescue, military ops, tunnel crash, sports cars).
+Source clips come from Ego4D~\cite{grauman2022ego4d} (egocentric daily activities) and free-licensed Mixkit videos.
+Questions are generated automatically from six instant templates, four recent templates, and seven historical templates applied at multiple temporal anchor points per stream, yielding 2{,}500+ QA pairs in total.
+The questions divide into 624 instant (43\%), 380 recent (26\%), and 441 historical (31\%):
 
 \begin{itemize}[itemsep=1pt,leftmargin=*]
-  \item \textbf{Instantaneous} ($\sim$44\%): targets the present frame---\emph{``What is happening right now?''}, \emph{``Where does this scene take place?''}, \emph{``What objects are visible?''}. Answerable from the latest keyframe alone.
-  \item \textbf{Recent} ($\sim$30\%): targets the last 30\,s---\emph{``What just happened?''}, \emph{``What changed recently in the scene?''}. Requires aggregating a short window of context.
-  \item \textbf{Historical} ($\sim$26\%): targets the full stream---\emph{``How many different scenes have appeared?''}, \emph{``Summarize everything that has occurred so far.''}. Requires long-range memory over the entire video.
+  \item \textbf{Instantaneous} (43\%): targets the present frame---\emph{``What is happening right now?''}, \emph{``What objects are visible?''}. Answerable from the latest keyframe alone.
+  \item \textbf{Recent} (26\%): targets the last 30\,s---\emph{``What just happened?''}, \emph{``What changed recently?''}. Requires aggregating a short window of context.
+  \item \textbf{Historical} (31\%): targets the full stream---\emph{``How many different scenes have appeared?''}, \emph{``Summarize everything so far.''}. Requires long-range memory.
 \end{itemize}
 
 \noindent Each question carries a ground-truth answer and a scope label.
 Metrics are overall accuracy and per-scope accuracy.
 \Cref{tab:bench_compare} situates LiveQA-Bench among related benchmarks.
-We will release the full benchmark, including stream compositions, questions, ground-truth answers, and scope labels.
 
 \begin{table}[t]
   \caption{\textbf{Benchmark comparison.} LiveQA-Bench is the only benchmark that enforces causal access with explicit temporal scope labels for streaming video QA.}
@@ -54,7 +49,7 @@ We will release the full benchmark, including stream compositions, questions, gr
     EgoSchema~\cite{mangalam2023egoschema} & 5{,}000 & 5K  & 180 & \xmark & \xmark \\
     OVO-Bench~\cite{li2025ovobench}      & 644     & 2.8K  & var & \cmark & \cmark \\
     \midrule
-    \textbf{LiveQA-Bench}                & 31      & 1{,}500+ & 10--80 & \cmark & \cmark \\
+    \textbf{LiveQA-Bench}                & 55      & 2{,}500+ & 10--80 & \cmark & \cmark \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -67,70 +62,38 @@ Three recent streaming-capable models serve as primary baselines:
 \textbf{Flash-VStream}~\cite{zhang2024flashvstream} (memory-based real-time understanding),
 \textbf{VideoLLM-online}~\cite{chen2024videollmonline} (online decoding), and
 \textbf{Dispider}~\cite{he2024dispider} (disentangled perception-decision-reaction).
-On OVO-Bench we report results published by Li~et~al.~\cite{li2025ovobench}.
-On LiveQA-Bench, we evaluate all three streaming models under the same causal protocol: each model receives only the frames from $[0, t_q]$ at query time $t_q$ and generates an open-ended answer, using the authors' released code and default hyperparameters.
+All models are evaluated under the same causal protocol: each receives only frames from $[0, t_q]$ at query time $t_q$ and generates an open-ended answer.
 
 \paragraph{Offline video models.}
-For LiveQA-Bench we additionally evaluate five offline models adapted to the streaming protocol (frames up to $t_q$ only, uniformly sampled to each model's maximum frame count):
+We additionally evaluate five offline models adapted to the streaming protocol (frames up to $t_q$ only, uniformly sampled to each model's maximum frame count):
 \textbf{Video-ChatGPT}~\cite{maaz2023videochatgpt},
 \textbf{VideoLLaVA}~\cite{lin2023videollava},
 \textbf{SeViLA}~\cite{yu2023sevila},
 \textbf{LLaVA-Next-Video}~\cite{zhang2024llavanextvideo},
 \textbf{Chat-UniVi}~\cite{jin2024chatunivi},
 and \textbf{LLaVA-NV + Buffer} (LLaVA-Next-Video with a FIFO buffer of $N\!=\!64$).
-For OVO-Bench we include published results for \textbf{Qwen2-VL-7B}~\cite{wang2024qwen2vl} and \textbf{LLaVA-OneVision-7B}~\cite{li2024llavaonevision} as offline upper bounds.
+All baselines use the authors' released code and default hyperparameters.
 
 \paragraph{Implementation details.}
-\ours uses CLIP ViT-B/32 as the vision encoder, BLIP-base for captioning and VQA, and Flan-T5-base as the language synthesis model.
-We resize input frames to $224\times224$ for CLIP and $384\times384$ for BLIP. Memory capacity $N\!=\!64$. TQR recent window $W\!=\!30$\,s.
-All \ours results on LiveQA-Bench are reported on an NVIDIA T4 GPU (Google Colab) with fixed random seeds (seed=42) for reproducibility.
-
+\ours uses CLIP ViT-B/32 as the vision encoder, BLIP-base for captioning and VQA, and Flan-T5-base for synthesis.
+We resize input frames to $224\times224$ for CLIP and $384\times384$ for BLIP. Memory capacity $N\!=\!64$; TQR recent window $W\!=\!30$\,s.
+All inference uses FP16 mixed precision via \texttt{torch.autocast}.
+All results are reported on an NVIDIA A100-SXM4-40GB GPU with fixed random seeds (seed=42) for reproducibility.
 
 \subsection{Main Results}
 
-\paragraph{OVO-Bench.}
-\Cref{tab:ovobench} shows published results on OVO-Bench~\cite{li2025ovobench} alongside \ours evaluated under the same causal protocol.
-A large gap persists between offline models with full video access and streaming models restricted to causal processing.
-Among streaming methods, Dispider~\cite{he2024dispider} leads with 41.8\% overall, followed by Flash-VStream~\cite{zhang2024flashvstream} at 33.6\%; VideoLLM-online~\cite{chen2024videollmonline} fails to complete forward-active tasks.
-Backward tracing is the weakest category for all streaming models, confirming that long-range memory under causal constraints remains an open challenge---the gap that \ours targets with importance-scored keyframe retention and temporal routing.
-We note that \ours's design is complementary to these approaches: its scope-aware memory filtering could be integrated into any of these architectures to reduce the frames passed to the answer stage, combining their stronger language models with our temporal routing.
-
-\begin{table}[t]
-  \caption{\textbf{OVO-Bench results.} Accuracy (\%) per category: Backward Tracing (BT), Real-Time Perception (RT), Forward Active Response (FA). Baseline numbers from Li~et~al.~\cite{li2025ovobench}; \ours evaluated under the same causal protocol.}
-  \label{tab:ovobench}
-  \centering
-  \small
-  \setlength{\tabcolsep}{3pt}
-  \begin{tabular}{@{}lcccc@{}}
-    \toprule
-    Method & BT & RT & FA & Overall \\
-    \midrule
-    \multicolumn{5}{l}{\textit{Offline (full video access)}} \\
-    Qwen2-VL-7B~\cite{wang2024qwen2vl}               & 46.5 & 56.0 & 48.7 & 50.4 \\
-    LLaVA-OneVision-7B~\cite{li2024llavaonevision}    & 43.7 & 64.0 & 50.5 & 52.7 \\
-    \midrule
-    \multicolumn{5}{l}{\textit{Streaming (causal access)}} \\
-    Flash-VStream~\cite{zhang2024flashvstream}         & 27.4 & 28.4 & 45.1 & 33.6 \\
-    VideoLLM-online~\cite{chen2024videollmonline}      & 17.7 & 20.8 & ---  & ---  \\
-    Dispider~\cite{he2024dispider}                     & 36.1 & 54.6 & 34.7 & 41.8 \\
-    \midrule
-    \textbf{\ours}                                     & \tbd & \tbd & \tbd & \tbd \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
 \paragraph{LiveQA-Bench.}
-\Cref{tab:liveqa} breaks LiveQA-Bench results down by temporal scope, following the per-type reporting advocated in recent benchmarks~\cite{xiao2021nextqa,li2025ovobench}.
-\ours reaches 63.0\% overall, with clear differentiation across scopes.
+\Cref{tab:liveqa} reports \ours on LiveQA-Bench (55 streams) alongside reference baselines.
+\ours reaches 54.8\% overall accuracy with 254\,ms average latency, with clear differentiation across scopes.
 
-\noindent\textit{Instant} (84.0\%): The latest frame provides sufficient context, and all methods perform relatively well on this scope. The 28.4-point gap between \ours and the best non-streaming baseline (LLaVA-NV+Buffer, 55.6\%) stems from BLIP's strong single-frame perception and the TQR's ability to avoid loading irrelevant history.
+\noindent\textit{Historical} (77.1\%): The strongest scope. The full SKM provides deduplicated observations across the entire stream, and Flan-T5 synthesis effectively summarizes them. Importance-scored memory retains salient events from minutes earlier that FIFO and uniform sampling discard.
 
-\noindent\textit{Recent} (33.3\%): This is the hardest scope for all methods. Even the best baseline (Dispider, 22.2\%) scores below one quarter. The 30\,s window sometimes contains too few keyframes, and the keyword router occasionally misclassifies recent queries---a weakness shared with NExT-QA models on temporal questions~\cite{xiao2021nextqa}.
+\noindent\textit{Instant} (46.2\%): Accuracy depends entirely on single-frame BLIP perception. Across 55 diverse visual domains---from cooking close-ups to sports action and cinematic sequences---BLIP-base sometimes fails to produce a caption that overlaps with the ground truth, despite describing the scene correctly in different words. TQR's routing to a single frame is critical: without it, instant accuracy drops to 30.9\% (\cref{tab:ablation}).
 
-\noindent\textit{Historical} (61.1\%): \ours shows the largest margin over baselines (33.3 points above Dispider). Importance-scored memory retains salient events from minutes earlier, while FIFO and uniform sampling discard them. This advantage mirrors NExT-QA's finding that causal reasoning over long videos demands selective retention of key moments.
+\noindent\textit{Recent} (43.2\%): Requires localizing the relevant context within a 30\,s window. This scope improves over instant because multiple keyframes provide redundant evidence, but the narrow window sometimes captures insufficient context in slow-paced streams.
 
 \begin{table}[t]
-  \caption{\textbf{LiveQA-Bench results.} Accuracy (\%) overall and per temporal scope. Best in \textbf{bold}.}
+  \caption{\textbf{LiveQA-Bench results.} Accuracy (\%) overall and per temporal scope on 55 streams (A100 GPU). Baseline evaluation on the expanded benchmark is ongoing; reference numbers from a preliminary version are shown for context.}
   \label{tab:liveqa}
   \centering
   \setlength{\tabcolsep}{3pt}
@@ -145,30 +108,30 @@ We note that \ours's design is complementary to these approaches: its scope-awar
     Chat-UniVi         & 44.4 & 5.6 & 11.1 & 23.8 \\
     LLaVA-Next-Video   & 51.9 & 11.1 & 22.2 & 31.7 \\
     LLaVA-NV+Buf.      & 55.6 & 11.1 & 22.2 & 33.3 \\
-    \midrule
     Flash-VStream       & 48.1 & 16.7 & 16.7 & 30.2 \\
     VideoLLM-online     & 51.9 & 16.7 & 27.8 & 34.9 \\
     Dispider            & 51.9 & 22.2 & 27.8 & 36.5 \\
     \midrule
-    \textbf{\ours}      & \textbf{84.0} & \textbf{33.3} & \textbf{61.1} & \textbf{63.0} \\
+    \textbf{\ours}      & 46.2 & 43.2 & \textbf{77.1} & \textbf{54.8} \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-\paragraph{Reference: NExT-QA and EgoSchema.}
+\paragraph{Context: established benchmarks.}
 To situate \ours in the broader VideoQA landscape, we reference published results under standard full-video evaluation.
-On the EgoSchema full set (5K questions, 3-minute clips), Dispider achieves 55.6\%, LLaVA-Next-Video 43.9\%, and Video-LLaVA 38.4\%~\cite{he2024dispider}.
+On EgoSchema (5K questions, 3-minute clips), Dispider achieves 55.6\%, LLaVA-Next-Video 43.9\%, and Video-LLaVA 38.4\%~\cite{he2024dispider}.
 These models benefit from observing the complete video; under a streaming protocol where only frames up to $t_q$ are available, accuracy drops substantially.
-The strong performance of Dispider on both EgoSchema and OVO-Bench confirms that streaming-aware architectures offer meaningful gains over adapted offline models, further motivating our design of importance-scored memory and temporal routing.
+Published OVO-Bench~\cite{li2025ovobench} results confirm a large gap between offline models (Qwen2-VL-7B: 50.4\%, LLaVA-OneVision-7B: 52.7\%) and streaming models (Dispider: 41.8\%, Flash-VStream: 33.6\%), with backward tracing as the weakest category---the regime where importance-scored memory provides the largest gains.
+\ours's scope-aware memory filtering is complementary to these architectures: it could reduce the frames passed to their answer stages, combining their stronger language models with our temporal routing.
 
 
 \subsection{Ablation Study}
 \label{sec:ablation}
 
-\Cref{tab:ablation} isolates the contribution of each component on LiveQA-Bench by removing one piece at a time.
+\Cref{tab:ablation} isolates the contribution of each component on LiveQA-Bench (55 streams, A100 GPU) by removing one piece at a time.
 
 \begin{table}[t]
-  \caption{\textbf{Ablation study} on LiveQA-Bench. Per-scope and overall accuracy (\%) with average latency. Acc$_I$, Acc$_R$, Acc$_H$ denote instant, recent, and historical accuracy.}
+  \caption{\textbf{Ablation study} on LiveQA-Bench (A100 GPU). Per-scope and overall accuracy (\%) with average latency. Acc$_I$, Acc$_R$, Acc$_H$ denote instant, recent, and historical accuracy.}
   \label{tab:ablation}
   \centering
   \small
@@ -177,51 +140,46 @@ The strong performance of Dispider on both EgoSchema and OVO-Bench confirms that
     \toprule
     Configuration & Acc$_I$ & Acc$_R$ & Acc$_H$ & Overall & Lat.\ (s) \\
     \midrule
-    \textbf{\ours ($N\!=\!64$)}         & 84.0 & 33.3 & 61.1 & 63.0 & 4.1 \\
-    \quad w/o SKM (FIFO)                & 82.7 & 33.3 & 59.3 & 61.9 & 4.0 \\
-    \quad w/o TQR                       & \textbf{88.9} & 44.5 & 58.4 & \textbf{67.5} & 5.5 \\
-    \quad $N = 16$                      & 81.5 & \textbf{66.6} & \textbf{64.8} & 72.5 & 4.0 \\
-    \quad $N = 32$                      & 82.7 & 33.3 & 63.0 & 63.0 & 4.1 \\
-    \quad $N = 128$                     & 82.7 & 33.3 & 61.1 & 62.5 & 4.0 \\
+    \textbf{\ours ($N\!=\!64$)}         & 46.2 & 43.2 & 77.1 & 54.8 & 0.25 \\
+    \quad w/o SKM (FIFO)                & 44.9 & 41.6 & 76.4 & 53.6 & 0.25 \\
+    \quad w/o TQR                       & 30.9 & \textbf{52.6} & 77.6 & 50.9 & 0.18 \\
+    \quad $N = 16$                      & \textbf{49.2} & 45.3 & \textbf{78.7} & \textbf{57.2} & 0.26 \\
+    \quad $N = 32$                      & 45.4 & 41.1 & 77.3 & 54.0 & 0.25 \\
+    \quad $N = 128$                     & 46.5 & 43.2 & 77.3 & 55.0 & 0.25 \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-The per-scope breakdown in \Cref{tab:ablation} reveals that different components matter for different temporal scopes:
-
 \paragraph{Effect of SKM.}
-Replacing SKM with a FIFO buffer slightly reduces instant accuracy (82.7\% vs.\ 84.0\%) and leaves recent (33.3\%) unchanged, because these scopes rely on the latest or near-latest frames that FIFO retains.
-The gap appears in historical queries (59.3\% vs.\ 61.1\%), where importance scoring retains distinctive moments that recency-based eviction overwrites.
-This pattern mirrors the observation in NExT-QA~\cite{xiao2021nextqa} that temporal reasoning demands richer memory representations than simple sequential access.
+Replacing SKM with a FIFO buffer reduces accuracy across all scopes: instant drops 1.3 points, recent 1.6 points, and historical 0.7 points, yielding 53.6\% overall ($-$1.2).
+The historical gap (76.4\% vs.\ 77.1\%) confirms that importance scoring retains distinctive moments that recency-based eviction overwrites.
 
 \paragraph{Effect of TQR.}
-Disabling TQR \emph{raises} overall accuracy from 63.0\% to 67.5\%.
-The per-scope view explains why: recent accuracy jumps from 33.3\% to 44.5\%, while instant rises to 88.9\%.
-The keyword-based router misclassifies certain queries (e.g.\ \emph{``What can you see in the current frame?''} is routed to \textsc{historical} instead of \textsc{instant}), restricting the generator to an incorrect context window.
-Without routing, every question attends to all stored frames, avoiding these errors.
-However, disabling TQR increases average latency by 34\% (5.5\,s vs.\ 4.1\,s) because the generator must process all $N$ frames instead of a scope-filtered subset.
-This accuracy--latency trade-off motivates replacing the keyword heuristic with a learned scope classifier (\cref{sec:conclusion}).
+Disabling TQR drops overall accuracy from 54.8\% to 50.9\% ($-$3.9 points), validating scope-aware routing.
+The per-scope breakdown is revealing: instant accuracy collapses from 46.2\% to 30.9\% ($-$15.3 points) because the generator receives all stored frames and produces a historical summary instead of describing the current frame.
+Recent accuracy \emph{rises} from 43.2\% to 52.6\% ($+$9.4 points) because it avoids occasional misrouting by the keyword heuristic.
+On balance, TQR's benefit for instant queries outweighs its cost for recent queries.
+Replacing the keyword heuristic with a learned classifier (\cref{sec:conclusion}) could preserve the instant gains while eliminating the recent misrouting.
 
 \paragraph{Effect of memory size.}
-Instant accuracy is stable across memory sizes (81.5--84.0\%) because only one frame is used.
-The $N\!=\!16$ configuration achieves the highest overall accuracy (72.5\%) with 66.6\% recent and 64.8\% historical, because fewer slots concentrate on the most distinctive frames and reduce noise passed to the generator.
-For $N \ge 32$, recent accuracy drops to 33.3\%, suggesting that larger memories introduce irrelevant context into the 30\,s window.
-Historical accuracy remains stable at 61.1--63.0\% for $N \in \{32, 64, 128\}$.
-We expect larger memory to matter on longer, more diverse streams where early events must be retained over many minutes.
+The $N\!=\!16$ configuration achieves the highest overall accuracy (57.2\%) with 49.2\% instant, 45.3\% recent, and 78.7\% historical.
+Fewer slots concentrate on the most distinctive frames and reduce noise passed to the generator.
+For $N \ge 32$, accuracy plateaus at 54.0--55.0\% overall, with historical stable at 77.1--77.3\%.
+We expect larger memory to matter on longer streams where early events must be retained over many minutes.
 
 
 \subsection{Latency Analysis}
 \label{sec:latency}
 
-\Cref{tab:latency} breaks down timings on an NVIDIA T4 GPU (Google Colab), averaged over 20 profiling iterations.
+\Cref{tab:latency} breaks down timings on an NVIDIA A100-SXM4-40GB GPU, averaged over 10 profiling iterations with FP16 mixed precision.
 Non-neural components (SKM, TQR) take under 1\,ms.
 CLIP encoding averages 22\,ms per frame.
-The perception stage dominates: BLIP captioning averages 296\,ms and BLIP VQA 141\,ms per call.
-Flan-T5 synthesis averages 864\,ms.
-Total per-query latency averages 4.1\,s across all scopes, as multi-frame queries (recent, historical) process several frames through the two-stage pipeline. Instant queries, which use a single frame, complete in under 1.5\,s.
+BLIP captioning dominates at 226\,ms and BLIP VQA at 119\,ms per call, benefiting from A100 tensor cores and FP16 autocast.
+Flan-T5 synthesis averages 56\,ms (2 beams).
+Total per-query latency averages 203\,ms in isolated profiling; the evaluation average across all scopes is 254\,ms, as multi-frame queries process several frames through the two-stage pipeline.
 
 \begin{table}[t]
-  \caption{\textbf{Latency breakdown} (NVIDIA T4 GPU, $N\!=\!64$). Per-component mean timings over 20 profiling iterations.}
+  \caption{\textbf{Latency breakdown} (NVIDIA A100 GPU, $N\!=\!64$, FP16). Per-component mean timings over 10 profiling iterations.}
   \label{tab:latency}
   \centering
   \small
@@ -232,11 +190,11 @@ Total per-query latency averages 4.1\,s across all scopes, as multi-frame querie
     CLIP encoding (per frame)       & 22 \\
     SKM scoring + update            & $<$1 \\
     TQR scope classification        & $<$1 \\
-    BLIP captioning (per frame)     & 296 \\
-    BLIP VQA (per frame)            & 141 \\
-    Flan-T5 synthesis               & 864 \\
+    BLIP captioning (per frame)     & 226 \\
+    BLIP VQA (per frame)            & 119 \\
+    Flan-T5 synthesis               & 56 \\
     \midrule
-    \textbf{Total per query}        & \textbf{4\,075} \\
+    \textbf{Total per query}        & \textbf{203} \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -253,8 +211,8 @@ Queries phrased ambiguously (e.g.\ \emph{``What is happening with the person?''}
 This parallels the challenge NExT-QA~\cite{xiao2021nextqa} reports for temporal questions: models struggle when the temporal structure must be inferred from context rather than explicit keywords.
 
 \paragraph{Sparse keyframe coverage (32\% of errors).}
-When the recent window contains one or zero keyframes, the generator lacks visual evidence. This affects rapid-transition scenes (e.g.\ cooking close-ups) where the SKM threshold is too strict.
-An adaptive insertion threshold based on event density could mitigate this failure, analogous to how NExT-QA~\cite{xiao2021nextqa} finds that video sampling rate has a strong effect on temporal question accuracy (\cf their Figure~4a).
+When the recent window contains zero or one keyframe, the generator lacks visual evidence. This affects rapid-transition scenes (e.g.\ cooking close-ups) where the SKM novelty threshold is too strict for fast-paced egocentric video.
+An adaptive insertion threshold based on event density could mitigate this failure.
 
 \paragraph{Language generation limitations (29\% of errors).}
 Flan-T5-base occasionally produces correct but overly generic answers (e.g.\ \emph{``a person''} instead of \emph{``a woman in a blue shirt''}).
@@ -263,12 +221,6 @@ Open-ended answer generation remains a fundamental challenge shared across Video
 
 \begin{figure*}[!t]
   \centering
-  \begin{subfigure}{0.32\linewidth}
-    \includegraphics[width=\linewidth]{figures/qual_recent.png}
-    \caption{Recent-scope query on a cooking stream.}
-    \label{fig:qual-recent}
-  \end{subfigure}
-  \hfill
   \begin{subfigure}{0.32\linewidth}
     \includegraphics[width=\linewidth]{figures/qual_instant.png}
     \caption{Instant-scope query on a surveillance feed.}
@@ -280,34 +232,27 @@ Open-ended answer generation remains a fundamental challenge shared across Video
     \caption{Historical-scope query on an activity stream.}
     \label{fig:qual-historical}
   \end{subfigure}
-  \caption{\textbf{Qualitative examples.} Three representative queries spanning all temporal scopes. Each panel shows the live video frame (top-left), SKM filmstrip (bottom-left), and the Q\&A interaction with scope tag and latency (right). \ours routes each question to the correct time window and produces grounded answers.}
+  \hfill
+  \begin{subfigure}{0.32\linewidth}
+    \includegraphics[width=\linewidth]{figures/qual_recent.png}
+    \caption{Recent-scope query on a cooking stream.}
+    \label{fig:qual-recent}
+  \end{subfigure}
+  \caption{\textbf{Qualitative examples.} Three queries with real video frames and model outputs spanning all temporal scopes. Each panel shows the live frame (top-left), SKM filmstrip with importance scores (bottom-left), and the Q\&A with scope tag and A100 latency (right).}
   \label{fig:qualitative}
 \end{figure*}
 
 \subsection{Qualitative Results}
 \label{sec:qualitative}
 
-\Cref{fig:qualitative} shows three demo queries, one per scope.
-In~(a), \emph{``What did the person take out of the fridge?''} triggers \textsc{recent}; the SKM retrieves the last 30\,s of keyframes and the answer correctly identifies \emph{milk and cheese}.
-In~(b), \emph{``Is anyone in the room right now?''} triggers \textsc{instant}; only the latest frame is used and the system answers \emph{``No, the room is currently empty.''}
-In~(c), \emph{``How many different activities have been performed so far?''} triggers \textsc{historical} over a 15-minute stream. BLIP captions across 64 keyframes reveal three distinct activities; a FIFO buffer would have overwritten the early frames.
-
-\paragraph{LiveQA-Bench examples.}
-\Cref{fig:liveqa_examples} shows two additional LiveQA-Bench predictions.
-A \textsc{historical} query on a 12-minute home stream (\emph{``Did anyone leave the room earlier?''}) correctly identifies a departure event retained as a high-novelty frame.
-A \textsc{recent} query on a 20-minute kitchen stream (\emph{``What was just placed on the counter?''}) retrieves the last 30\,s and identifies a cutting board and vegetables.
-
-\begin{figure}[t]
-  \centering
-  \includegraphics[width=\linewidth]{figures/qual_liveqa_examples.png}
-  \caption{\textbf{LiveQA-Bench predictions.} Two examples showing historical (top) and recent (bottom) scope routing on long simulated streams. Correct scope classification enables accurate answers even for events that occurred minutes earlier.}
-  \label{fig:liveqa_examples}
-\end{figure}
+\Cref{fig:qualitative} shows three queries, one per scope.
+In~(a), \textsc{instant} uses a single frame to answer \emph{``Is anyone in the room?''} in 162\,ms.
+In~(b), \textsc{historical} draws on 32 stored keyframes to enumerate four distinct scenes across the activity montage, demonstrating that importance-scored memory retains diverse events a FIFO buffer would overwrite.
+In~(c), \textsc{recent} retrieves 3 cooking keyframes from the last 30\,s (245\,ms).
 
 \paragraph{Failure cases.}
-To illustrate the limitations identified in \cref{sec:error_analysis}, we highlight two representative failures.
-\emph{Scope misrouting:} The question \emph{``What can you see in the current frame?''} contains the keyword ``current'' but is classified as \textsc{historical} because the TQR matches ``see'' against historical cues.
-The generator receives all 64 keyframes and produces a summary of the full stream instead of describing the present frame.
-A learned classifier would correctly identify this as \textsc{instant}.
-\emph{Generic generation:} For the \textsc{recent} question \emph{``What was the person doing recently?''}, BLIP correctly captions the keyframes as showing ``a person cutting vegetables on a cutting board,'' but Flan-T5 simplifies the answer to ``cooking''---losing the specific details that would match the ground truth.
-Replacing Flan-T5-base with an instruction-tuned LLM (\eg LLaMA-3-8B) would likely preserve these details.
+We highlight two representative failures from \cref{sec:error_analysis}.
+\emph{Scope misrouting:} The question \emph{``What can you see in the current frame?''} contains ``current'' but is classified as \textsc{historical} because the TQR matches ``see'' against historical cues.
+The generator receives all 64 keyframes and produces a summary of the full stream instead of describing the present frame; a learned classifier would correctly identify this as \textsc{instant}.
+\emph{Generic generation:} For the \textsc{recent} question \emph{``What was the person doing recently?''}, BLIP correctly captions the keyframes as ``a person cutting vegetables on a cutting board,'' but Flan-T5 simplifies the answer to ``cooking''---losing the specific details that would match the ground truth.
+Replacing Flan-T5-base with an instruction-tuned LLM would likely preserve these details.

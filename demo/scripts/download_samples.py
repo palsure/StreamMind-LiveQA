@@ -7,13 +7,20 @@ of visual scenarios.  All source clips are free-licensed from Mixkit.
 Demo clips (3):
   cooking.mp4, surveillance.mp4, activity.mp4
 
-Evaluation clips (28 additional, downloaded with --eval):
+Evaluation clips (52 additional, downloaded with --eval):
   Daily-life/indoor: gym, grocery, classroom, warehouse, cafe,
     workshop, restaurant, library
   Outdoor/urban: traffic, street, park_jog, night_city, market, aerial_city
-  Sports/action: soccer, basketball, swimming, running, cycling, boxing
-  Trailer-style/cinematic: car_chase, fireworks, concert, sunset
+  Sports/action: soccer, basketball, swimming, running, cycling, boxing,
+    soccer_match, mma_fight, basketball_drill, surfing, motocross,
+    skateboarding, kickboxing, boxing_knockout, skiing, track_warmup,
+    soccer_dribble, cyclist_aerial
+  Trailer/cinematic: car_chase, fireworks, concert, sunset,
+    helicopter_rescue, apocalypse_scene, tunnel_crash, military_ops,
+    sports_car_reveal, dashboard_driving, night_speedometer,
+    convertible_garage, forest_walk
   Nature/wildlife: beach, forest, underwater, rain
+  Urban/lifestyle: city_jogger, couple_jogging, woman_silhouette
 
 Usage:
   python download_samples.py              # demo clips only
@@ -194,6 +201,106 @@ EVAL_VIDEOS = {
         "url": "https://assets.mixkit.co/videos/2543/2543-720.mp4",
         "description": "Heavy rain falling on a street, puddles forming",
     },
+
+    # ── Sports & action (extended) ────────────────────────────────────
+    "soccer_match.mp4": {
+        "url": "https://assets.mixkit.co/videos/43483/43483-720.mp4",
+        "description": "One-on-one soccer game ending with shot on goal",
+    },
+    "mma_fight.mp4": {
+        "url": "https://assets.mixkit.co/videos/40985/40985-720.mp4",
+        "description": "Intense mixed martial arts combat between two women",
+    },
+    "basketball_drill.mp4": {
+        "url": "https://assets.mixkit.co/videos/44448/44448-720.mp4",
+        "description": "Basketball player shooting baskets during solo training",
+    },
+    "surfing.mp4": {
+        "url": "https://assets.mixkit.co/videos/21286/21286-720.mp4",
+        "description": "Surfer riding a wave in the open ocean",
+    },
+    "motocross.mp4": {
+        "url": "https://assets.mixkit.co/videos/43114/43114-720.mp4",
+        "description": "Motorcycle rider racing through desert terrain",
+    },
+    "skateboarding.mp4": {
+        "url": "https://assets.mixkit.co/videos/21285/21285-720.mp4",
+        "description": "Person riding a longboard on an open road",
+    },
+    "kickboxing.mp4": {
+        "url": "https://assets.mixkit.co/videos/40260/40260-720.mp4",
+        "description": "Female kickboxer training in a boxing ring",
+    },
+    "boxing_knockout.mp4": {
+        "url": "https://assets.mixkit.co/videos/40969/40969-720.mp4",
+        "description": "Boxer knocked out during a semi-professional match",
+    },
+    "skiing.mp4": {
+        "url": "https://assets.mixkit.co/videos/3371/3371-720.mp4",
+        "description": "Skiers on snowy mountain slopes with clouds",
+    },
+    "track_warmup.mp4": {
+        "url": "https://assets.mixkit.co/videos/583/583-720.mp4",
+        "description": "Woman doing warm-up exercises on a running track",
+    },
+    "soccer_dribble.mp4": {
+        "url": "https://assets.mixkit.co/videos/43484/43484-720.mp4",
+        "description": "Soccer player dribbling one-on-one at sunset",
+    },
+    "cyclist_aerial.mp4": {
+        "url": "https://assets.mixkit.co/videos/48514/48514-720.mp4",
+        "description": "Aerial drone footage of cyclist riding between trees",
+    },
+
+    # ── Movie / show trailer style ───────────────────────────────────
+    "helicopter_rescue.mp4": {
+        "url": "https://assets.mixkit.co/videos/24596/24596-720.mp4",
+        "description": "Rescue helicopter flying over terrain, cinematic",
+    },
+    "apocalypse_scene.mp4": {
+        "url": "https://assets.mixkit.co/videos/41809/41809-720.mp4",
+        "description": "Mercenary clearing corridor in abandoned building",
+    },
+    "tunnel_crash.mp4": {
+        "url": "https://assets.mixkit.co/videos/47109/47109-720.mp4",
+        "description": "Car accident inside tunnel with rescue team",
+    },
+    "military_ops.mp4": {
+        "url": "https://assets.mixkit.co/videos/5961/5961-720.mp4",
+        "description": "Soldier in tactical military scene",
+    },
+    "sports_car_reveal.mp4": {
+        "url": "https://assets.mixkit.co/videos/63/63-720.mp4",
+        "description": "Cinematic close-up of a red sports car",
+    },
+    "dashboard_driving.mp4": {
+        "url": "https://assets.mixkit.co/videos/72/72-720.mp4",
+        "description": "Dashboard POV driving through city traffic",
+    },
+    "night_speedometer.mp4": {
+        "url": "https://assets.mixkit.co/videos/64/64-720.mp4",
+        "description": "Sports car dashboard accelerating, cinematic",
+    },
+    "convertible_garage.mp4": {
+        "url": "https://assets.mixkit.co/videos/74/74-720.mp4",
+        "description": "Red convertible in underground parking garage",
+    },
+    "forest_walk.mp4": {
+        "url": "https://assets.mixkit.co/videos/86/86-720.mp4",
+        "description": "Man walking through sunlit forest, cinematic",
+    },
+    "city_jogger.mp4": {
+        "url": "https://assets.mixkit.co/videos/40766/40766-720.mp4",
+        "description": "Man jogging on pedestrian bridge in the city",
+    },
+    "couple_jogging.mp4": {
+        "url": "https://assets.mixkit.co/videos/40881/40881-720.mp4",
+        "description": "Man and woman jogging together on city street",
+    },
+    "woman_silhouette.mp4": {
+        "url": "https://assets.mixkit.co/videos/780/780-720.mp4",
+        "description": "Silhouette of woman stretching before jogging",
+    },
 }
 
 
@@ -287,7 +394,7 @@ def build_activity_video():
 def main():
     parser = argparse.ArgumentParser(description="Download StreamMind sample videos")
     parser.add_argument("--eval", action="store_true",
-                        help="Also download evaluation-only videos (28 extra clips)")
+                        help="Also download evaluation-only videos (52 extra clips)")
     args = parser.parse_args()
 
     print("StreamMind — downloading sample videos\n")
@@ -301,7 +408,7 @@ def main():
     build_activity_video()
 
     if args.eval:
-        print("\n--- Evaluation clips (28 diverse domains) ---")
+        print("\n--- Evaluation clips (52 diverse domains) ---")
         for name, info in EVAL_VIDEOS.items():
             download_file(info["url"], os.path.join(SAMPLE_DIR, name), info["description"])
 

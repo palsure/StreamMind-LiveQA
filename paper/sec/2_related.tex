@@ -6,32 +6,26 @@ The recent wave of video-language models pairs a visual encoder with a large lan
 Video-ChatGPT~\cite{maaz2023videochatgpt} averages spatial and temporal features and fine-tunes on video-instruction data.
 VideoLLaVA~\cite{lin2023videollava} adds a projection layer that aligns video and image representations before the language model.
 LLaVA-Next-Video~\cite{zhang2024llavanextvideo} scales frame resolution and count.
-SeViLA~\cite{yu2023sevila} localizes keyframes first, then answers questions from those frames.
-Chat-UniVi~\cite{jin2024chatunivi} merges spatial and temporal features at multiple granularities with adaptive tokens.
-BLIP~\cite{li2022blip} works at the single-image level, training one model for captioning and VQA. We adopt BLIP as the perception backbone in \ours.
-Each of these systems expects the full video at inference time. A growing stream with no known end breaks that expectation. We built \ours for exactly that regime: causal, frame-by-frame input with bounded memory.
+SeViLA~\cite{yu2023sevila} localizes keyframes first, then answers from those frames.
+Chat-UniVi~\cite{jin2024chatunivi} merges features at multiple granularities with adaptive tokens.
+BLIP~\cite{li2022blip} trains one model for captioning and VQA---we adopt it as the perception backbone in \ours.
+Each of these systems expects the full video at inference time. A growing stream with no known end breaks that expectation; \ours is built for causal, frame-by-frame input with bounded memory.
 
 \paragraph{Streaming perception.}
-Yang \etal~\cite{yang2022real} formalize real-time streaming perception for object detection. Their benchmark penalizes a method whenever it falls behind the input frame rate.
+Yang \etal~\cite{yang2022real} formalize real-time streaming perception for object detection, penalizing methods that fall behind the input frame rate.
 StreamPETR~\cite{wang2023streampetr} carries this idea to 3D detection by propagating temporal features across frames.
 Several recent efforts come closer to our problem.
-VideoStreaming~\cite{qian2024streaming} proposes a training protocol aware of streaming constraints.
 Flash-VStream~\cite{zhang2024flashvstream} adds a memory layer for long video streams.
 VideoLLM-online~\cite{chen2024videollmonline} extends large language models with a streaming decoding mechanism so the model can answer while the video is still playing.
-Dispider~\cite{he2024dispider} disentangles perception, decision, and reaction into parallel modules, enabling active real-time interaction with video feeds.
-Despite this progress, none of these methods explicitly reason about which temporal window a user's question refers to. \ours fills that gap with temporal scope classification and scope-aware memory filtering, achieving stronger results on both established and new streaming benchmarks.
+Dispider~\cite{he2024dispider} disentangles perception, decision, and reaction into parallel modules, enabling active real-time interaction.
+Despite this progress, none of these methods explicitly reason about which temporal window a user's question refers to. \ours fills that gap with temporal scope classification and scope-aware memory filtering.
 
 \paragraph{Video question answering.}
-NExT-QA~\cite{xiao2021nextqa} tests causal and temporal reasoning on short clips and reveals an important gap: models that excel at descriptive questions struggle on causal and temporal ones.
-Its per-type evaluation (causal, temporal, descriptive) inspired our per-scope evaluation (instant, recent, historical), and its open-ended QA results show that strong multi-choice models struggle to \emph{generate} correct answers---a challenge \ours inherits through its open-ended Flan-T5 generation stage.
-STAR~\cite{wu2021star} probes situated reasoning with compositional questions, and MVBench~\cite{li2024mvbench} covers a broad range of video understanding tasks.
-EgoSchema~\cite{mangalam2023egoschema} pushes the time horizon to minutes-long egocentric clips from Ego4D~\cite{grauman2022ego4d}, a large-scale egocentric video dataset spanning thousands of hours of daily activities.
-The egocentric regime is particularly relevant to streaming QA: body-mounted cameras produce a continuous unscripted stream where event density varies dramatically---from idle walking to rapid object manipulations.
-Ego4D's Natural Language Queries (NLQ) task, which grounds temporal queries to specific video moments, shares our goal of temporal localization but assumes offline access to the full recording.
-\ours builds on Ego4D clips as source material for LiveQA-Bench and inherits the diversity of egocentric scenarios, but operates under a strict causal constraint where future frames are never available.
+NExT-QA~\cite{xiao2021nextqa} tests causal and temporal reasoning and reveals that strong multi-choice models struggle to \emph{generate} correct answers---a challenge \ours inherits.
+Its per-type evaluation inspired our per-scope analysis.
+EgoSchema~\cite{mangalam2023egoschema} pushes the time horizon to minutes-long egocentric clips from Ego4D~\cite{grauman2022ego4d}; \ours uses Ego4D clips as source material for LiveQA-Bench but operates under a strict causal constraint.
 MovieChat~\cite{song2024moviechat} tackles long videos by merging frame features into a fixed-size buffer.
-OVO-Bench~\cite{li2025ovobench} is the closest antecedent: it evaluates Video-LLMs on online video understanding with questions that must be answered causally, without seeing future frames.
-We evaluate on OVO-Bench alongside NExT-QA and EgoSchema to cover a wide spectrum.
+OVO-Bench~\cite{li2025ovobench} is the closest antecedent: it evaluates Video-LLMs on online video understanding with causal access constraints.
 LiveQA-Bench complements these benchmarks by introducing explicit temporal scope labels, enabling per-scope analysis that reveals \emph{which} components matter for \emph{which} temporal reasoning demands.
 
 \paragraph{Two-stage pipelines and temporal memory.}

@@ -29,7 +29,7 @@ BOT_BG = "#2e4a3e"
 SCOPE_COLORS = {"recent": "#f59e0b", "instant": "#22c55e", "historical": "#6366f1"}
 TEXT_COLOR = "#e0e0e0"
 
-DPI = 400
+DPI = 600
 
 
 def draw_video_frame(ax, scene_lines, timestamp="00:01:42"):

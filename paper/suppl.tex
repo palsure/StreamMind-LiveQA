@@ -1,6 +1,35 @@
-\clearpage
-\setcounter{page}{1}
-\maketitlesupplementary
+% Supplementary Material for StreamMind (separate PDF)
+\documentclass[10pt,twocolumn,letterpaper]{article}
+
+\usepackage{cvpr}
+
+\usepackage[accsupp]{axessibility}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{amsmath,amssymb}
+\usepackage{xspace}
+\usepackage{microtype}
+
+\definecolor{cvprblue}{rgb}{0.21,0.49,0.74}
+\usepackage[pagebackref,breaklinks,colorlinks,allcolors=cvprblue]{hyperref}
+
+\newcommand{\ours}{StreamMind\xspace}
+
+\def\paperID{*****}
+\def\confName{CVPR}
+\def\confYear{2026}
+
+\title{Adaptive Temporal Memory for Interactive \\ Question Answering on Live Video Streams \\ {\large Supplementary Material}}
+
+\author{
+Suresh Kumar Palus\textsuperscript{1} \qquad Partha Sarathi Samal\textsuperscript{2}\\[4pt]
+\textsuperscript{1}Independent Researcher, Pennsylvania, USA\\
+\textsuperscript{2}Independent Researcher, Connecticut, USA\\[2pt]
+{\tt\small \textsuperscript{1}sure.1985@gmail.com \quad \textsuperscript{2}samalpartha@gmail.com}
+}
+
+\begin{document}
+\maketitle
 
 \section{TQR Keyword Lists}
 \label{sec:suppl_tqr}
@@ -27,9 +56,11 @@
 \label{sec:suppl_liveqa}
 
 LiveQA-Bench uses 55 video streams covering diverse visual domains:
-\emph{daily life/indoor} (cooking, surveillance, gym, grocery, classroom, warehouse, caf\'{e}, workshop),
-\emph{outdoor/urban} (traffic, street), and
-\emph{nature} (beach).
+\emph{daily life/indoor} (cooking, surveillance, gym, grocery, classroom, warehouse, caf\'{e}, workshop, library, restaurant),
+\emph{outdoor/urban} (traffic, street, aerial city, night city, market, city jogger),
+\emph{nature} (beach, forest, sunset, rain, underwater, forest walk),
+\emph{sports/action} (boxing, cycling, running, swimming, soccer, basketball, MMA, kickboxing, surfing, motocross, skateboarding, skiing),
+and \emph{cinematic/trailer} (car chase, concert, fireworks, helicopter rescue, military ops, tunnel crash, sports cars, dashboard driving).
 The activity composite concatenates four distinct indoor/outdoor scenes.
 Source clips come from Ego4D~\cite{grauman2022ego4d} and free-licensed Mixkit videos.
 Each stream is 10--80 seconds long.
@@ -47,29 +78,6 @@ Four recent templates: \emph{``What just happened in the last few seconds?''}, \
 
 Seven historical templates: three open-ended (\emph{``What has happened throughout the stream?''}, \emph{``Summarize everything that has occurred so far.''}, \emph{``Describe the main events in the video so far.''}), three yes/no (\emph{``Did anything change earlier?''}, \emph{``Has there been more than one scene?''}, \emph{``Did the scene stay the same?''}), and one counting (\emph{``How many different scenes have appeared?''}).
 
-\section{Additional Qualitative Examples}
-\label{sec:suppl_qual}
-
-We provide additional predictions to complement the examples in the main paper.
-
-\paragraph{Correct predictions across domains.}
-\begin{itemize}[itemsep=4pt,leftmargin=*]
-  \item \textbf{Cooking stream (instant):} \emph{Q:} ``What is happening right now?'' \emph{A:} ``A person is stirring food in a pan on the stove.'' (scope: \textsc{instant}, 1 frame, 162\,ms). The single-frame answer is grounded in the BLIP caption and correctly identifies the cooking action.
-
-  \item \textbf{Surveillance stream (historical):} \emph{Q:} ``Did anything change earlier in the video?'' \emph{A:} ``Yes'' (scope: \textsc{historical}, 8 frames, 342\,ms). The SKM retained a high-novelty frame from a scene transition, enabling the correct yes/no answer.
-
-  \item \textbf{Activity montage (recent):} \emph{Q:} ``What was the person doing recently?'' \emph{A:} ``The person was walking through a park with trees and grass.'' (scope: \textsc{recent}, 4 frames, 254\,ms). The 30\,s window captured the transition from indoors to outdoors.
-\end{itemize}
-
-\paragraph{Failure cases.}
-\begin{itemize}[itemsep=4pt,leftmargin=*]
-  \item \textbf{Scope misrouting:} \emph{Q:} ``What can you see in the current frame?'' The word ``see'' matches historical cues, routing to \textsc{historical} instead of \textsc{instant}. The answer describes the entire stream rather than the present frame. A learned classifier would handle this correctly.
-
-  \item \textbf{Sparse coverage:} \emph{Q:} ``What just happened?'' asked during a rapid cooking sequence. Only 1 keyframe falls within the 30\,s recent window because the SKM novelty threshold is too strict for fast-paced egocentric video. An adaptive threshold would insert more frames during high-density periods.
-
-  \item \textbf{Generic generation:} \emph{Q:} ``What is happening right now?'' BLIP captions the frame as ``a woman in a blue shirt cutting vegetables on a wooden cutting board'' but Flan-T5-base simplifies to ``cooking.'' The correct details are present in the perception stage but lost during synthesis.
-\end{itemize}
-
 \section{Demo Interface}
 \label{sec:suppl_demo}
 
@@ -83,27 +91,27 @@ We provide additional predictions to complement the examples in the main paper.
 \Cref{fig:demo} shows the full demo interface. Users can stream from their webcam, upload a local video, or choose from pre-loaded sample clips including movie trailers and activity montages.
 The video panel (left) shows the live feed with the SKM filmstrip; the chat panel (right) accepts free-form questions and returns scope-annotated answers.
 
-\section{Evaluation Results}
+\section{Evaluation Results and Reproducibility}
 \label{sec:suppl_eval}
 
 Full per-question evaluation results, ablation logs, and latency profiles are available in the project repository:
 
 \begin{itemize}[itemsep=2pt,leftmargin=*]
-  \item \textbf{LiveQA-Bench full results (A100):} \texttt{eval/results/streammind\_A100\_gpu\_results/} --- contains per-question predictions, accuracy breakdowns, and latency statistics across 55 video streams.
-  \item \textbf{Ablation results:} \texttt{eval/results/streammind\_A100\_gpu\_results/ablation\_summary.json} --- accuracy and latency for each ablation configuration (w/o SKM, w/o TQR, $N \in \{16, 32, 64, 128\}$).
+  \item \textbf{LiveQA-Bench full results (A100):} \texttt{eval/results/streammind\_A100\_gpu\_results/} --- per-question predictions, accuracy breakdowns, and latency statistics across 55 video streams.
+  \item \textbf{Ablation results:} \texttt{eval/results/streammind\_A100\_gpu\_results/ablation\_summary.json} --- accuracy and latency for each ablation configuration.
   \item \textbf{Latency profiling:} \texttt{eval/results/streammind\_A100\_gpu\_results/latency.json} --- per-component timing breakdown averaged over 10 profiling iterations.
   \item \textbf{Evaluation notebook:} \texttt{eval/StreamMind\_Eval.ipynb} --- Google Colab notebook for reproducing all results on a T4 or A100 GPU.
-  \item \textbf{Evaluation runner:} \texttt{eval/run\_docker\_eval.py} --- end-to-end evaluation script with video download, frame extraction, and scoring pipeline.
   \item \textbf{Project repository:} \url{https://github.com/palsure/StreamMind-LiveQA}
 \end{itemize}
 
 \noindent Results are organized as JSON files with per-question entries containing the predicted answer, ground-truth answer, scope label, accuracy score, and latency.
 All evaluation uses fixed random seeds (seed=42) for reproducibility.
-
-\section{Reproducibility}
-\label{sec:suppl_repro}
-
-All evaluation code, the LiveQA-Bench dataset (canonical benchmark JSON with fixed ground-truth answers), and a Google Colab notebook for GPU evaluation are included in the supplementary material and will be released publicly.
-Random seeds are fixed (seed=42) throughout the evaluation pipeline to ensure deterministic results.
 All models are frozen pre-trained checkpoints loaded from HuggingFace: CLIP ViT-B/32 (\texttt{openai/clip-vit-base-patch32}), BLIP captioning (\texttt{Salesforce/blip-image-captioning-base}), BLIP VQA (\texttt{Salesforce/blip-vqa-base}), and Flan-T5-base (\texttt{google/flan-t5-base}).
 No training or fine-tuning is required.
+
+{\small
+\bibliographystyle{ieeenat_fullname}
+\bibliography{main}
+}
+
+\end{document}
