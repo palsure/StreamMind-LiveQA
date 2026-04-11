@@ -16,10 +16,12 @@ flowchart TB
         P[paper/]
         E[eval/]
         D[demo/]
+        Fig[figures/]
     end
 
     P --> P1[LaTeX + PDF]
-    P --> P2[figures/ qualitative PNGs]
+    P --> P2[paper/figures/]
+    Fig --> F1[copies of key PNGs for README]
 
     D --> D1[FastAPI backend]
     D --> D2[Browser frontend]
@@ -35,13 +37,13 @@ flowchart TB
 ## Live demo
 
 <p align="center">
-  <img src="paper/figures/demo_screenshot.png" width="90%" alt="StreamMind live demo interface"/>
+  <img src="figures/demo_screenshot.png" width="90%" alt="StreamMind live demo interface"/>
 </p>
 
 ## SKM filmstrip (memory view)
 
 <p align="center">
-  <img src="paper/figures/skm_filmstrip.png" width="85%" alt="Semantic Keyframe Memory filmstrip"/>
+  <img src="figures/skm_filmstrip.png" width="85%" alt="Semantic Keyframe Memory filmstrip"/>
 </p>
 
 ## Key ideas
@@ -101,19 +103,19 @@ flowchart LR
 ### Instant scope - "What is happening right now?"
 
 <p align="center">
-  <img src="paper/figures/qual_instant.png" width="85%" alt="Instant-scope qualitative example"/>
+  <img src="figures/qual_instant.png" width="85%" alt="Instant-scope qualitative example"/>
 </p>
 
 ### Recent scope - "What just happened?"
 
 <p align="center">
-  <img src="paper/figures/qual_recent.png" width="85%" alt="Recent-scope qualitative example"/>
+  <img src="figures/qual_recent.png" width="85%" alt="Recent-scope qualitative example"/>
 </p>
 
 ### Historical scope - "What has happened throughout the stream?"
 
 <p align="center">
-  <img src="paper/figures/qual_historical.png" width="85%" alt="Historical-scope qualitative example"/>
+  <img src="figures/qual_historical.png" width="85%" alt="Historical-scope qualitative example"/>
 </p>
 
 ## Results (paper table, LiveQA-Bench)
