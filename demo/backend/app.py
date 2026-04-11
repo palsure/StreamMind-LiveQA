@@ -29,7 +29,6 @@ vlm: VLMEngine | None = None
 async def lifespan(app: FastAPI):
     global processor, vlm
     memory_capacity = int(os.environ.get("MEMORY_CAPACITY", "32"))
-    model_name = os.environ.get("VLM_MODEL", "")
 
     logger.info(f"Initializing StreamProcessor (capacity={memory_capacity})")
     processor = StreamProcessor(memory_capacity=memory_capacity)

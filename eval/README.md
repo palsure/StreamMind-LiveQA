@@ -1,6 +1,34 @@
 # StreamMind Evaluation
 
-Evaluation harness for StreamMind. Runs the full pipeline (CLIP + SKM + TQR + BLIP + Flan-T5) on benchmark videos under a **causal streaming protocol**: for each question at timestamp `t_q`, the model only sees frames from `[0, t_q]`.
+Runs the same stack as the paper under a **causal protocol**: at question time `t_q`, only frames in `[0, t_q]` are visible.
+
+## Pipeline (high level)
+
+```mermaid
+flowchart LR
+    subgraph Video
+        MP4["MP4 streams"]
+    end
+
+    subgraph Ingest
+        EX["Frame extract\n(sample FPS)"]
+        SKM["SKM update\nCLIP novelty"]
+    end
+
+    subgraph PerQuestion
+        TQR["TQR\nscope"]
+        BLIP["BLIP\ncaption + VQA"]
+        T5["Flan-T5\nfuse"]
+        MET["ROUGE-style\nmatch vs GT"]
+    end
+
+    MP4 --> EX
+    EX --> SKM
+    SKM --> TQR
+    TQR --> BLIP
+    BLIP --> T5
+    T5 --> MET
+```
 
 ## Setup
 
@@ -9,191 +37,111 @@ cd eval
 pip install -r requirements.txt
 ```
 
-Models (CLIP ViT-B/32, BLIP-base, Flan-T5-base) are downloaded automatically on first run via Hugging Face.
+Models download from Hugging Face on first use. Prefer a GPU with at least 16 GB VRAM (A100, 3090 class). CPU works but is slow.
 
-**Hardware**: A single GPU with >= 16 GB VRAM is recommended (A100, RTX 3090, etc.). CPU-only evaluation works but is slow.
+## LiveQA-Bench (in this repo)
 
-## Benchmark Data Preparation
+LiveQA is generated from the same sample videos as the demo:
 
-### Option 1: Interactive setup
+1. Download clips: from repo root, `python demo/scripts/download_samples.py --eval` (writes under `demo/frontend/samples/`).
+2. Run the harness: `python run_docker_eval.py` from `eval/` (or use `StreamMind_Eval.ipynb` on Colab). It scans `demo/frontend/samples/*.mp4`, builds questions, scores answers, and writes JSON under `eval/results/` (exact folder name depends on your run).
 
-```bash
-python prepare_data.py --benchmark all --output-dir ./data
-```
+Canonical numbers for the paper were produced on an **A100**; committed snapshots may live under paths such as `eval/results/streammind_A100_gpu_results_52/`:
 
-This prints download instructions and fetches available annotation files.
+| File | Contents |
+|------|----------|
+| `liveqa_full.json` | Per-question rows + `summary` (accuracy, latency, scope breakdown) |
+| `ablation_summary.json` | `full`, `fifo`, `no_tqr`, and memory sizes `N16` / `N32` / `N128` |
+| `latency.json` | Per-component timing from profiling |
 
-### Option 2: Manual setup
+Example `summary` from one A100 run (2652 questions, SKM N=64): overall **51.7%**, instant **45.0%**, recent **37.4%**, historical **73.5%**, mean latency **~242 ms**.
 
-Each benchmark expects the following directory layout:
+## Other benchmarks (bring your own video)
 
-| Benchmark | Directory | Key files |
-|-----------|-----------|-----------|
+Use `prepare_data.py` for download hints and expected folder layout:
+
+| Benchmark | Data root | Notes |
+|-----------|-----------|--------|
 | NExT-QA | `data/nextqa/` | `val.csv`, `videos/*.mp4` |
-| EgoSchema | `data/egoschema/` | `questions.json`, `subset_answers.json`, `videos/*.mp4` |
-| OVO-Bench | `data/ovobench/` | `annotations.json`, `videos/*.mp4` |
-| Ego4D-NLQ | `data/ego4d/` | `nlq_val.json`, `videos/*.mp4` |
-| LiveQA-Bench | `data/liveqa/` | `annotations.json`, `streams/*.mp4` |
+| EgoSchema | `data/egoschema/` | questions + subset + videos |
+| OVO-Bench | `data/ovobench/` | Large video drop; see notebook "Option B" (Drive) |
+| Ego4D-NLQ | `data/ego4d/` | Requires Ego4D agreement |
 
-**Source URLs:**
-- NExT-QA: https://github.com/doc-doc/NExT-QA (uses VidOR videos)
-- EgoSchema: https://github.com/egoschema/EgoSchema (uses Ego4D clips)
-- OVO-Bench: https://github.com/JoeLeelyf/OVO-Bench
-- Ego4D: https://ego4d-data.org (requires signed data agreement)
-- LiveQA-Bench: included with this repo (TBD)
-
-## Running Evaluation
+## Commands
 
 ### Single benchmark
 
 ```bash
-# NExT-QA
 python evaluate.py --benchmark nextqa --data-root ./data/nextqa \
     --memory-capacity 64 --sample-fps 2.0 --output-dir ./results
-
-# EgoSchema (500-question subset)
-python evaluate.py --benchmark egoschema --data-root ./data/egoschema \
-    --subset subset --output-dir ./results
-
-# OVO-Bench
-python evaluate.py --benchmark ovobench --data-root ./data/ovobench \
-    --output-dir ./results
-
-# Ego4D-NLQ
-python evaluate.py --benchmark ego4d_nlq --data-root ./data/ego4d \
-    --output-dir ./results
-
-# LiveQA-Bench
-python evaluate.py --benchmark liveqa --data-root ./data/liveqa \
-    --output-dir ./results
 ```
 
-### All benchmarks at once
-
-Create a `config.json`:
-```json
-{
-    "nextqa": "./data/nextqa",
-    "egoschema": "./data/egoschema",
-    "ovobench": "./data/ovobench",
-    "ego4d_nlq": "./data/ego4d",
-    "liveqa": "./data/liveqa"
-}
-```
+LiveQA via the generic driver (if wired to `data/liveqa/`):
 
 ```bash
-python evaluate.py --benchmark all --data-config config.json --output-dir ./results
+python evaluate.py --benchmark liveqa --data-root ./data/liveqa --output-dir ./results
 ```
 
-### Key options
+### LiveQA via bundled script (recommended)
 
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--memory-capacity` | 64 | SKM capacity (N) |
-| `--sample-fps` | 2.0 | Frames per second extracted from video |
-| `--max-samples` | 0 (all) | Limit samples for quick testing |
-| `--gpt-score` | off | Compute GPT-assisted scores (needs `OPENAI_API_KEY`) |
-| `--device` | auto | Force `cpu` or `cuda` |
-
-### Debug run (quick sanity check)
+From `eval/`:
 
 ```bash
-python evaluate.py --benchmark nextqa --data-root ./data/nextqa \
-    --max-samples 10 --device cpu
+python run_docker_eval.py --project-root ..
 ```
 
-## Output
+### All benchmarks
 
-Results are saved to `--output-dir` (default `./results/`):
+Point `--data-config` at a JSON map of benchmark names to roots, then `--benchmark all`.
 
-```
-results/
-  nextqa_results.json      # Per-sample predictions and correctness
-  nextqa_summary.json      # Aggregate metrics
-  egoschema_results.json
-  egoschema_summary.json
-  ...
-  all_summaries.json       # Combined (when --benchmark=all)
-```
+### Useful flags
 
-### Summary format
+| Flag | Default | Meaning |
+|------|---------|---------|
+| `--memory-capacity` | 64 | SKM size N |
+| `--sample-fps` | 2.0 | Extraction rate |
+| `--max-samples` | 0 | Cap samples for a smoke test |
+| `--device` | auto | `cpu` or `cuda` |
 
-```json
-{
-  "benchmark": "NExT-QA",
-  "n_samples": 5240,
-  "accuracy": 64.7,
-  "gpt_score": 3.82,
-  "per_type": {"causal": 61.2, "temporal": 68.1, "descriptive": 65.3}
-}
-```
+## Outputs
 
-## Updating the Paper
+Under `--output-dir` (default `./results/`):
 
-After evaluation, convert results to LaTeX values:
+- `*_results.json` or per-run JSON with per-item predictions
+- `*_summary.json` or embedded `summary` blocks with aggregate accuracy
+
+## Paper numbers
 
 ```bash
 python results_to_latex.py --results-dir ./results
 ```
 
-This prints the exact numbers to paste into `paper/sec/4_experiments.tex`, replacing the `\tbd` placeholders.
+Prints LaTeX-friendly values for `paper/sec/4_experiments.tex`.
 
-## Google Colab (GPU)
+## Colab
 
-The fastest way to get GPU results is the included Colab notebook:
+Open `StreamMind_Eval.ipynb` in Colab with a GPU runtime. The clone step uses `https://github.com/palsure/StreamMind-LiveQA.git` by default. Run cells in order: install, download samples, then `run_docker_eval` / ablations.
 
-1. Open `eval/StreamMind_Eval.ipynb` in [Google Colab](https://colab.research.google.com/)
-2. Set the runtime to **GPU** (*Runtime → Change runtime type → T4 or A100*)
-3. The `REPO_URL` is pre-configured to `https://github.com/palsure/StreamMind-LiveQA.git`
-4. Run all cells — results appear in ~30 min on T4, ~10 min on A100
+## Baselines
 
-The notebook runs latency profiling, LiveQA-Bench evaluation, and the full ablation study. It then prints LaTeX-ready values for `paper/sec/4_experiments.tex`.
+`run_baselines.py` is for external models with their own installs. See that file for supported names and paths.
 
-For external benchmarks (NExT-QA, EgoSchema, etc.), upload your data to Google Drive, mount it in the notebook, and uncomment the benchmark names in the "External Benchmarks" cell.
+## Metrics by benchmark
 
-You can also run the evaluation script directly in Colab without the notebook:
+| Benchmark | Main metric |
+|-----------|-------------|
+| NExT-QA | Top-1 accuracy |
+| EgoSchema | Top-1 accuracy |
+| OVO-Bench | Top-1 (+ categories in dataset) |
+| Ego4D-NLQ | R@1 at IoU |
+| LiveQA-Bench | Top-1 + per-scope instant / recent / historical |
 
-```python
-# In a Colab cell with GPU runtime:
-!git clone https://github.com/palsure/StreamMind-LiveQA.git /content/StreamMind-LiveQA
-!pip install -r /content/StreamMind-LiveQA/eval/requirements.txt rouge-score
-!pip install -r /content/StreamMind-LiveQA/demo/backend/requirements.txt
+## Stack (same names as the paper)
 
-!python /content/StreamMind-LiveQA/eval/run_docker_eval.py --project-root /content/StreamMind-LiveQA
-```
-
-## Baseline Evaluation
-
-To evaluate baseline models under our streaming protocol:
-
-```bash
-python run_baselines.py \
-    --baseline videollava \
-    --benchmark nextqa \
-    --data-root ./data/nextqa \
-    --model-path /path/to/videollava/weights
-```
-
-Each baseline requires its own model code installed separately. See `run_baselines.py` for supported models and installation instructions.
-
-## Metrics
-
-| Benchmark | Primary Metric | Additional |
-|-----------|---------------|------------|
-| NExT-QA | Top-1 Accuracy (%) | GPT Score (1-5) |
-| EgoSchema | Top-1 Accuracy (%) | — |
-| OVO-Bench | Top-1 Accuracy (%) | Per-category (BT/RP/FA) |
-| Ego4D-NLQ | R@1 IoU>=0.3 (%) | — |
-| LiveQA-Bench | Top-1 Accuracy (%) | Per-scope (instant/recent/historical) |
-
-## Pipeline Configuration
-
-The evaluation uses the same StreamMind components as the demo:
-
-| Component | Model | Paper Name |
-|-----------|-------|------------|
-| Visual encoder | `openai/clip-vit-base-patch32` | CLIP ViT-B/32 |
-| Captioning + VQA | `Salesforce/blip-image-captioning-base`, `Salesforce/blip-vqa-base` | BLIP-base |
-| Language synthesis | `google/flan-t5-base` | Flan-T5-base |
-| Memory | `MemoryManager(capacity=64, alpha=0.7)` | SKM |
-| Temporal routing | `VLMEngine.classify_temporal_scope()` | TQR |
+| Piece | Hugging Face id |
+|-------|-----------------|
+| Frame encoder | `openai/clip-vit-base-patch32` |
+| Caption + VQA | `Salesforce/blip-image-captioning-base`, `Salesforce/blip-vqa-base` |
+| Fuse | `google/flan-t5-base` |
+| Memory | `MemoryManager` with configurable N |
+| Routing | Keyword TQR in `VLMEngine` |

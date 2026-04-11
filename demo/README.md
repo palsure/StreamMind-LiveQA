@@ -1,122 +1,136 @@
 # StreamMind Demo
 
-Interactive web-based demo for **StreamMind: Adaptive Temporal Memory for Interactive Question Answering on Live Video Streams**.
+Browser demo for **StreamMind**: live or uploaded video, Semantic Keyframe Memory (SKM) filmstrip, and chat answers with temporal scope labels.
 
-## Overview
+## What you see
 
-This demo lets you interact with the StreamMind system through your browser:
-- **Left panel**: live webcam feed with a filmstrip showing the Semantic Keyframe Memory contents in real time.
-- **Right panel**: chat interface where you type natural language questions about the stream and receive answers with temporal scope metadata.
+- **Left:** video (webcam, upload, or samples) and the SKM strip of retained keyframes.
+- **Right:** questions and answers. Each reply notes whether the question was treated as instant, recent, or historical.
 
-## Architecture
+## How requests flow
 
+```mermaid
+flowchart TB
+    subgraph Browser
+        V[Video / webcam]
+        C[Chat UI]
+    end
+
+    subgraph Server["FastAPI backend"]
+        WS1["/ws/stream"]
+        WS2["/ws/chat"]
+        SP[StreamProcessor]
+        MM[MemoryManager SKM]
+        VLM[VLMEngine]
+        TQR[TQR scope]
+        BLIP[BLIP caption + VQA]
+        T5[Flan-T5 fuse]
+    end
+
+    V --> WS1
+    WS1 --> SP
+    SP --> MM
+    C --> WS2
+    WS2 --> VLM
+    VLM --> TQR
+    TQR --> BLIP
+    BLIP --> T5
+    T5 --> C
+    MM -.->|keyframes| VLM
 ```
-Browser (webcam + chat)
-  │
-  ├── /ws/stream  →  StreamProcessor  →  MemoryManager (SKM)
-  │                     (frame encoding)     (importance-based retention)
-  │
-  └── /ws/chat    →  VLMEngine
-                       ├── Temporal Query Router (scope classification)
-                       └── Answer Generator (VLM or fallback)
-```
 
-## Quick Start
+## Quick start
 
-### 1. Install dependencies
+### Dependencies
 
 ```bash
 cd demo/backend
 pip install -r requirements.txt
 ```
 
-**Minimum (CPU, demo mode):** `fastapi`, `uvicorn`, `Pillow`, `numpy` are sufficient. The demo runs in fallback mode without `torch`/`transformers`, using rule-based scope classification and placeholder answers.
+**CPU demo:** FastAPI stack runs without a GPU; answers use the same BLIP + Flan-T5 path when PyTorch and `transformers` are installed.
 
-**Full (GPU):** Install PyTorch with CUDA support and `transformers` for CLIP-based frame encoding and optional VLM inference.
+**GPU:** Install PyTorch with CUDA for faster CLIP encoding and model inference.
 
-### 2. Start the server
+### Run the server
 
 ```bash
-# Demo mode (no GPU required)
 cd demo/backend
 python app.py
-
-# With CLIP frame encoding (requires torch)
-MEMORY_CAPACITY=32 python app.py
-
-# With a language model for answer generation
-VLM_MODEL=microsoft/phi-3-mini-4k-instruct MEMORY_CAPACITY=64 python app.py
 ```
 
-The server starts at `http://localhost:8000`.
+Optional: `MEMORY_CAPACITY=64` to change SKM size (default 32). Open `http://localhost:8000`.
 
-### 3. Download sample videos
+### Sample videos
 
 ```bash
 cd demo/scripts
-python download_samples.py
+python download_samples.py          # demo clips
+python download_samples.py --eval   # LiveQA-style eval clips (many files)
 ```
 
-This downloads three sample clips:
-- **Activity (Recommended)** — multi-scene composite (home, dog, park, kitchen) that produces different answers for each temporal scope. Requires `ffmpeg` on PATH.
-- **Cooking Stream** — single-scene cooking video
-- **Surveillance Feed** — empty office room
+The activity composite needs `ffmpeg` on your PATH.
 
-### 4. Open the demo
+### Docker
 
-Navigate to `http://localhost:8000` in your browser. Click **Start Webcam** for live input, or use the **Sample Videos** dropdown. **Use "Activity (Recommended)"** for the best demo — it has 4 distinct scenes so that instant, recent, and historical queries return visibly different answers. Then type questions in the chat panel.
+```bash
+cd demo
+docker compose up --build -d
+```
 
-## Workshop Presentation Mode
+Then open `http://localhost:8000`. Videos are fetched during the image build when configured in the Dockerfile.
 
-Click the **Presentation Mode** button in the header to activate a projector-friendly view with:
-- Enlarged text and UI elements for visibility from a distance
-- Suggested one-click questions that step through all three temporal scopes (Instant, Recent, Historical)
-- On-screen scope tags, frame counts, and latency indicators visible to the audience
+## Workshop mode
 
-This mode is ideal for live demos at conferences and workshops.
+Use **Presentation Mode** in the header for larger type, suggested one-click questions across all three scopes, and clear scope and latency hints for an audience.
 
-## Example Questions
+## Example questions
 
-| Question | Expected Scope |
-|---|---|
-| "What do you see right now?" | Instant |
-| "What am I holding?" | Instant |
-| "What did I just pick up?" | Recent |
-| "Did anyone walk by recently?" | Recent |
-| "Was there a red object earlier?" | Historical |
-| "How many people have been in the frame?" | Historical |
+| Question | Typical scope |
+|----------|---------------|
+| What do you see right now? | Instant |
+| What did I just pick up? | Recent |
+| Was there a red object earlier? | Historical |
+| How many different scenes so far? | Historical |
 
 ## Configuration
 
-| Environment Variable | Default | Description |
-|---|---|---|
-| `MEMORY_CAPACITY` | `32` | Number of keyframe slots in the SKM |
-| `VLM_MODEL` | _(none)_ | HuggingFace model name for answer generation |
+| Variable | Default | Role |
+|----------|---------|------|
+| `MEMORY_CAPACITY` | 32 | SKM slot count |
 
-## File Structure
+Models are fixed in `vlm_engine.py` (CLIP for encoding in `stream_processor.py`, BLIP + Flan-T5 for answers).
+
+## Scripts
+
+| Script | Role |
+|--------|------|
+| `scripts/download_samples.py` | Pull Mixkit samples into `frontend/samples/` |
+| `scripts/generate_paper_figures.py` | Build qualitative PNGs for the paper from samples |
+| `scripts/generate_figures.py` | Legacy matplotlib placeholders (prefer `generate_paper_figures.py`) |
+
+## Layout
 
 ```
 demo/
   backend/
-    app.py              # FastAPI server with WebSocket endpoints
-    stream_processor.py # Frame ingestion and CLIP encoding
-    memory_manager.py   # Semantic Keyframe Memory implementation
-    vlm_engine.py       # Temporal scope classifier + answer generator
-    requirements.txt    # Python dependencies
+    app.py                 FastAPI + WebSockets
+    stream_processor.py    Frames into CLIP / SKM
+    memory_manager.py      SKM retention
+    vlm_engine.py          TQR + BLIP + Flan-T5
+    requirements.txt
   frontend/
-    index.html          # Main page
-    style.css           # Dark-theme responsive UI
-    app.js              # WebSocket client, webcam capture, chat logic
-    samples/            # Downloaded sample videos (activity, cooking, surveillance)
+    index.html  style.css  app.js
+    samples/               Downloaded MP4s (gitignored at repo root via *.mp4)
   scripts/
-    download_samples.py # Downloads sample video clips
-    generate_figures.py # Generates qualitative figures for the paper
-  README.md             # This file
+    download_samples.py
+    generate_paper_figures.py
+    generate_figures.py
 ```
 
 ## Requirements
 
 - Python 3.10+
-- Modern browser with webcam access (Chrome, Firefox, Edge)
-- `ffmpeg` for building the composite activity sample video
-- (Optional) NVIDIA GPU with CUDA for CLIP encoding and VLM inference
+- A current browser with WebSocket support
+- `ffmpeg` for the multi-scene activity sample
+- Optional: NVIDIA GPU + CUDA for comfortable latency

@@ -1,0 +1,140 @@
+{
+  "full": {
+    "config": "full",
+    "memory_capacity": 64,
+    "n_samples": 2652,
+    "overall_accuracy": 51.7,
+    "per_scope_accuracy": {
+      "instant": 45.0,
+      "recent": 37.4,
+      "historical": 73.5
+    },
+    "per_scope_score": {
+      "instant": 0.384,
+      "recent": 0.292,
+      "historical": 0.589
+    },
+    "avg_score": 0.422,
+    "avg_latency_ms": 241.5,
+    "scope_counts": {
+      "instant": 1140,
+      "recent": 700,
+      "historical": 812
+    }
+  },
+  "N16": {
+    "config": "N16",
+    "memory_capacity": 16,
+    "n_samples": 2652,
+    "overall_accuracy": 54.1,
+    "per_scope_accuracy": {
+      "instant": 46.8,
+      "recent": 39.6,
+      "historical": 76.8
+    },
+    "per_scope_score": {
+      "instant": 0.395,
+      "recent": 0.302,
+      "historical": 0.606
+    },
+    "avg_score": 0.435,
+    "avg_latency_ms": 244.9,
+    "scope_counts": {
+      "instant": 1140,
+      "recent": 700,
+      "historical": 812
+    }
+  },
+  "N32": {
+    "config": "N32",
+    "memory_capacity": 32,
+    "n_samples": 2652,
+    "overall_accuracy": 50.5,
+    "per_scope_accuracy": {
+      "instant": 44.1,
+      "recent": 35.6,
+      "historical": 72.2
+    },
+    "per_scope_score": {
+      "instant": 0.383,
+      "recent": 0.287,
+      "historical": 0.582
+    },
+    "avg_score": 0.418,
+    "avg_latency_ms": 243.5,
+    "scope_counts": {
+      "instant": 1140,
+      "recent": 700,
+      "historical": 812
+    }
+  },
+  "N128": {
+    "config": "N128",
+    "memory_capacity": 128,
+    "n_samples": 2652,
+    "overall_accuracy": 51.7,
+    "per_scope_accuracy": {
+      "instant": 45.0,
+      "recent": 37.4,
+      "historical": 73.3
+    },
+    "per_scope_score": {
+      "instant": 0.382,
+      "recent": 0.291,
+      "historical": 0.589
+    },
+    "avg_score": 0.422,
+    "avg_latency_ms": 242.6,
+    "scope_counts": {
+      "instant": 1140,
+      "recent": 700,
+      "historical": 812
+    }
+  },
+  "fifo": {
+    "config": "fifo",
+    "memory_capacity": 64,
+    "n_samples": 2652,
+    "overall_accuracy": 51.0,
+    "per_scope_accuracy": {
+      "instant": 44.3,
+      "recent": 36.3,
+      "historical": 73.2
+    },
+    "per_scope_score": {
+      "instant": 0.377,
+      "recent": 0.294,
+      "historical": 0.583
+    },
+    "avg_score": 0.418,
+    "avg_latency_ms": 241.8,
+    "scope_counts": {
+      "instant": 1140,
+      "recent": 700,
+      "historical": 812
+    }
+  },
+  "no_tqr": {
+    "config": "no_tqr",
+    "memory_capacity": 64,
+    "n_samples": 2652,
+    "overall_accuracy": 48.0,
+    "per_scope_accuracy": {
+      "instant": 30.0,
+      "recent": 46.9,
+      "historical": 74.3
+    },
+    "per_scope_score": {
+      "instant": 0.262,
+      "recent": 0.317,
+      "historical": 0.595
+    },
+    "avg_score": 0.379,
+    "avg_latency_ms": 169.9,
+    "scope_counts": {
+      "instant": 1140,
+      "recent": 700,
+      "historical": 812
+    }
+  }
+}

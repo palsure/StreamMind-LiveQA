@@ -1,13 +1,11 @@
 """
-Generate qualitative example figures for the StreamMind paper.
-Each figure simulates a demo screenshot showing the video frame,
-the SKM filmstrip, and the chat QA interaction.
+Legacy matplotlib-only qualitative figures (no real video frames).
+
+For paper figures from actual sample videos, use generate_paper_figures.py
+in this folder instead.
 
 Run:  python generate_figures.py
-Output: ../../paper/figures/qual_recent.pdf
-        ../../paper/figures/qual_instant.pdf
-        ../../paper/figures/qual_historical.pdf
-        ../../paper/figures/qual_liveqa_examples.pdf
+Output: ../../paper/figures/qual_*.pdf (if you still need vector placeholders)
 """
 
 import matplotlib

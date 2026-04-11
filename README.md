@@ -2,108 +2,232 @@
 
 **Adaptive Temporal Memory for Interactive Question Answering on Live Video Streams**
 
-StreamMind is a streaming vision-language system for interactive Q&A on live video. Unlike standard VideoQA models that assume the full recording is available before inference, StreamMind operates on a video that is still in progress -- answering questions about the present, the recent past, and the long-term history of the stream.
+**CVPR 2026 Workshop on Vision-and-Language Reasoning (VAR)**
 
-> CVPR 2026 submission by Suresh Kumar Palus and Partha Sarathi Samal
+Suresh Kumar Palus, Partha Sarathi Samal, Sai Kiran Padmam, Bhavan Kumar B.R
 
-## Key Ideas
+StreamMind is a streaming vision-language system for interactive Q&A on live video. Most VideoQA models need the full recording before they can answer anything. StreamMind works on video that is still playing. You can ask about the present, the last few seconds, or earlier in the stream.
 
-- **Semantic Keyframe Memory (SKM)** -- A fixed-capacity bank of *N* frames scored by visual novelty and temporal coverage. Important moments stay; redundant ones get evicted. Bounded memory, unbounded streams.
-- **Temporal Query Router (TQR)** -- Classifies each question as *instant*, *recent*, or *historical* and passes only the matching time slice to the answer stage, avoiding temporal hallucination.
-- **Stream-Fused Generator (SFG)** -- BLIP extracts captions and visual answers from selected keyframes; Flan-T5 fuses those observations into a single coherent response. Average per-query latency: 4.1 s on a T4 GPU.
-- **LiveQA-Bench** -- 500 temporally-diverse questions across 50 simulated live streams (5--30 min) with per-question scope labels, the first VideoQA benchmark that enforces causal access with explicit temporal scope annotations.
+## Repository layout
 
-## Results Highlights
+```mermaid
+flowchart TB
+    subgraph Root["StreamMind repo"]
+        P[paper/]
+        E[eval/]
+        D[demo/]
+    end
 
-Results averaged over 3 runs on an NVIDIA T4 GPU:
+    P --> P1[LaTeX + PDF]
+    P --> P2[figures/ qualitative PNGs]
 
-| Scope | Accuracy | Note |
-|---|---|---|
-| Instant | 84.0 % | Single frame suffices |
-| Historical | 61.1 % | SKM +1.8 pts over FIFO baseline |
-| Recent | 33.3 % | Hardest scope for all methods |
-| **Overall** | **63.0 %** | |
+    D --> D1[FastAPI backend]
+    D --> D2[Browser frontend]
+    D --> D3["samples/ via download_samples.py"]
 
-Ablations show SKM benefits historical queries, while the keyword-based TQR hurts recent queries through misrouting -- disabling it raises overall accuracy to 67.5% at the cost of 34% more latency, motivating a learned scope classifier. Comparisons on OVO-Bench and EgoSchema confirm that streaming-aware architectures substantially outperform adapted offline models.
+    E --> E1[run_docker_eval.py]
+    E --> E2[evaluate.py + benchmarks/]
+    E --> E3["results/ JSON logs"]
 
-## Repository Structure
-
-```
-StreamMind/
-  paper/          LaTeX source for the CVPR 2026 paper
-  eval/           Evaluation harness and LiveQA-Bench
-  demo/           Interactive web demo (FastAPI + browser UI)
+    D3 -.->|same MP4s| E1
 ```
 
-### Paper
+## Live demo
 
-CVPR 2026 author-kit LaTeX sources. Build with `latexmk -pdf main.tex` inside `paper/`. See [`paper/README.md`](paper/README.md) for template details.
+<p align="center">
+  <img src="paper/figures/demo_screenshot.png" width="90%" alt="StreamMind live demo interface"/>
+</p>
 
-### Evaluation
+## SKM filmstrip (memory view)
 
-Reproducible benchmark suite running CLIP + SKM + TQR + BLIP + Flan-T5 under a causal streaming protocol (only frames up to query time *t_q* are visible).
+<p align="center">
+  <img src="paper/figures/skm_filmstrip.png" width="85%" alt="Semantic Keyframe Memory filmstrip"/>
+</p>
 
-Supported benchmarks: **LiveQA-Bench**, **OVO-Bench**, **NExT-QA**, **EgoSchema**, **Ego4D-NLQ**.
+## Key ideas
+
+- **Semantic Keyframe Memory (SKM)** keeps a fixed bank of N frames scored by visual novelty and spread in time. Important moments stay; redundant ones are replaced.
+- **Temporal Query Router (TQR)** decides if a question is instant, recent, or historical and passes only the matching slice so past and present do not get mixed up.
+- **Stream-Fused Generator (SFG)** uses BLIP on selected frames, then Flan-T5 to merge captions and VQA bits into one answer.
+- **LiveQA-Bench** uses 55 diverse streams with per-question scope labels and a strict causal viewing rule.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    subgraph Inputs
+        VS["Live Video\nStream"]
+        UQ["User\nQuestion"]
+    end
+
+    subgraph SKM ["Semantic Keyframe Memory"]
+        ENC["CLIP ViT-B/32\nEncoder"]
+        IMP["Importance\nScoring"]
+        MEM["Memory Bank\nN slots"]
+    end
+
+    subgraph TQR ["Temporal Query Router"]
+        KW["Keyword\nClassifier"]
+        SCOPE["Scope\nDetection"]
+        MASK["Time-Slice\nSelector"]
+    end
+
+    subgraph SFG ["Stream-Fused Generator"]
+        CAP["BLIP\nCaptioning"]
+        VQA["BLIP\nVQA"]
+        FUS["Flan-T5\nSynthesis"]
+    end
+
+    ANS["Real-Time\nAnswer"]
+
+    VS -->|"frames"| ENC
+    ENC -->|"embeddings"| IMP
+    IMP -->|"score > threshold"| MEM
+    UQ -->|"question"| KW
+    KW -->|"keywords"| SCOPE
+    SCOPE -->|"instant / recent / historical"| MASK
+    MEM -->|"keyframes"| MASK
+    MASK -->|"selected frames"| CAP
+    MASK -->|"selected frames"| VQA
+    ENC -->|"live frame"| CAP
+    CAP -->|"captions"| FUS
+    VQA -->|"answers"| FUS
+    UQ -->|"question"| VQA
+    FUS -->|"fused answer"| ANS
+```
+
+## Qualitative results
+
+### Instant scope - "What is happening right now?"
+
+<p align="center">
+  <img src="paper/figures/qual_instant.png" width="85%" alt="Instant-scope qualitative example"/>
+</p>
+
+### Recent scope - "What just happened?"
+
+<p align="center">
+  <img src="paper/figures/qual_recent.png" width="85%" alt="Recent-scope qualitative example"/>
+</p>
+
+### Historical scope - "What has happened throughout the stream?"
+
+<p align="center">
+  <img src="paper/figures/qual_historical.png" width="85%" alt="Historical-scope qualitative example"/>
+</p>
+
+## Results (paper table, LiveQA-Bench)
+
+Reference baselines use the same causal rule: only frames up to the question time count.
+
+| Method | Instant | Recent | Hist. | Overall |
+|--------|--------:|-------:|------:|--------:|
+| Video-ChatGPT | 40.7 | 5.6 | 11.1 | 22.2 |
+| VideoLLaVA | 44.4 | 5.6 | 16.7 | 25.4 |
+| SeViLA | 48.1 | 11.1 | 16.7 | 28.6 |
+| Chat-UniVi | 44.4 | 5.6 | 11.1 | 23.8 |
+| LLaVA-Next-Video | 51.9 | 11.1 | 22.2 | 31.7 |
+| LLaVA-NV + Buffer | 55.6 | 11.1 | 22.2 | 33.3 |
+| Flash-VStream | 48.1 | 16.7 | 16.7 | 30.2 |
+| VideoLLM-online | 51.9 | 16.7 | 27.8 | 34.9 |
+| Dispider | 51.9 | 22.2 | 27.8 | 36.5 |
+| **StreamMind** | **45.0** | **37.4** | **73.5** | **51.7** |
+
+StreamMind reaches **51.7%** overall at **~242 ms** mean latency on an A100 in our run, about **15 points** above the strongest baseline in this table (Dispider 36.5%).
+
+### Ablations (same A100 run, 2652 questions)
+
+| Configuration | Instant | Recent | Hist. | Overall | Mean latency |
+|---------------|--------:|-------:|------:|--------:|-------------:|
+| Full (N=64) | 45.0 | 37.4 | 73.5 | 51.7 | 242 ms |
+| FIFO instead of SKM | 44.3 | 36.3 | 73.2 | 51.0 | 242 ms |
+| No TQR | 30.0 | 46.9 | 74.3 | 48.0 | 170 ms |
+| N = 16 | 46.8 | 39.6 | 76.8 | 54.1 | 245 ms |
+| N = 32 | 44.1 | 35.6 | 72.2 | 50.5 | 244 ms |
+| N = 128 | 45.0 | 37.4 | 73.3 | 51.7 | 243 ms |
+
+### Latency breakdown (A100, FP16, profiling table from paper)
+
+| Component | Mean (ms) |
+|-----------|----------:|
+| CLIP encoding (per frame) | 20 |
+| SKM scoring + update | <1 |
+| TQR scope classification | <1 |
+| BLIP captioning (per frame) | 248 |
+| BLIP VQA (per frame) | 114 |
+| Flan-T5 synthesis | 75 |
+| **Total per query (profiled)** | **203** |
+
+### Where these numbers are saved
+
+After you run the eval notebook or `eval/run_docker_eval.py`, JSON logs land under `eval/results/`. On our side we often keep a snapshot folder such as `eval/results/streammind_A100_gpu_results_52/` containing:
+
+- `liveqa_full.json` — per-question rows plus a top-level `summary` (accuracy, latency, scope counts)
+- `ablation_summary.json` — `full`, `fifo`, `no_tqr`, and `N16` / `N32` / `N128` blocks
+
+Commit those files if you want the links above to resolve on GitHub; otherwise run the eval once and inspect the same paths locally.
+
+## Modules (quick map)
+
+| Area | Role |
+|------|------|
+| `demo/backend/app.py` | FastAPI app and WebSocket routes |
+| `demo/backend/stream_processor.py` | Frames in, CLIP features, handoff to SKM |
+| `demo/backend/memory_manager.py` | SKM retention and scoring |
+| `demo/backend/vlm_engine.py` | TQR + BLIP + Flan-T5 answer path |
+| `eval/run_docker_eval.py` | Builds LiveQA from samples and runs full scoring |
+| `eval/evaluate.py` | Generic benchmark driver (NExT-QA, EgoSchema, …) |
+| `eval/pipeline.py` | Shared eval pipeline pieces |
+| `eval/benchmarks/` | Per-dataset loaders |
+
+## Paper, eval, demo
+
+- **Paper:** `latexmk -pdf main.tex` in `paper/`. Details in [`paper/README.md`](paper/README.md).
+- **Evaluation:** [`eval/README.md`](eval/README.md) and `eval/StreamMind_Eval.ipynb`.
+- **Demo:** [`demo/README.md`](demo/README.md).
+
+**Eval quick start:**
 
 ```bash
 cd eval
 pip install -r requirements.txt
-python evaluate.py --benchmark liveqa   # or nextqa, egoschema, ovobench, ego4d_nlq, all
+python run_docker_eval.py --project-root ..
 ```
 
-GPU with >= 16 GB VRAM recommended; CPU works but is slow. A Colab notebook (`StreamMind_Eval.ipynb`) is also provided. See [`eval/README.md`](eval/README.md) for full setup, data preparation, and configuration.
-
-### Demo
-
-Interactive browser-based demo with live webcam or sample video input, a filmstrip showing the SKM contents in real time, and a chat panel that returns answers with temporal scope metadata.
-
-**Quick start (Docker):**
+**Demo quick start:**
 
 ```bash
 cd demo
 docker compose up --build -d
-# open http://localhost:8000
 ```
 
-**Quick start (local, CPU demo mode):**
+Then open `http://localhost:8000`. Sample MP4s: `python demo/scripts/download_samples.py --eval` from repo root (videos stay gitignored as `*.mp4`).
 
-```bash
-cd demo/backend
-pip install -r requirements.txt
-python app.py
-# open http://localhost:8000
+## Models used
+
+Frozen Hugging Face checkpoints only.
+
+| Component | Model |
+|-----------|-------|
+| Frame encoder | `openai/clip-vit-base-patch32` |
+| Captioning | `Salesforce/blip-image-captioning-base` |
+| VQA | `Salesforce/blip-vqa-base` |
+| Language | `google/flan-t5-base` |
+
+## Citation
+
+```bibtex
+@inproceedings{palus2026streammind,
+  title     = {StreamMind: Adaptive Temporal Memory for Interactive
+               Question Answering on Live Video Streams},
+  author    = {Palus, Suresh Kumar and Samal, Partha Sarathi
+               and Padmam, Sai Kiran and B.R, Bhavan Kumar},
+  booktitle = {Proceedings of the IEEE/CVF Conference on Computer
+               Vision and Pattern Recognition (CVPR) Workshops},
+  year      = {2026}
+}
 ```
-
-Sample videos (movie trailers and activity montages) are downloaded automatically during the Docker build or can be fetched manually with `python demo/scripts/download_samples.py`.
-
-See [`demo/README.md`](demo/README.md) for environment variables, presentation mode, and example questions.
-
-## Architecture
-
-```
-Browser (webcam / video + chat)
-  │
-  ├─ /ws/stream  →  StreamProcessor  →  MemoryManager (SKM)
-  │                   CLIP encoding       importance-based retention
-  │
-  └─ /ws/chat    →  VLMEngine
-                      ├─ Temporal Query Router (scope classification)
-                      └─ Stream-Fused Generator
-                           ├─ BLIP (captioning + VQA per keyframe)
-                           └─ Flan-T5 (observation fusion)
-```
-
-## Models Used
-
-All models are frozen pre-trained checkpoints from Hugging Face -- no fine-tuning required.
-
-| Component | Model | Purpose |
-|---|---|---|
-| Frame encoder | `openai/clip-vit-base-patch32` | Visual embeddings for SKM novelty scoring |
-| Captioning | `Salesforce/blip-image-captioning-base` | Free-form frame descriptions |
-| VQA | `Salesforce/blip-vqa-base` | Per-frame visual question answering |
-| Language synthesis | `google/flan-t5-base` | Fusing observations into coherent answers |
 
 ## License
 
-See individual component licenses. The paper LaTeX template follows the CVPR author kit terms.
+See per-component licenses. The CVPR LaTeX kit follows the [author kit](https://github.com/cvpr-org/author-kit) terms.

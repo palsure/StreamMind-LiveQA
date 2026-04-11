@@ -408,16 +408,17 @@ main {
 .sample-menu {
   display: none;
   position: absolute;
-  top: 100%;
+  bottom: 100%;
   left: 0;
-  margin-top: 4px;
+  margin-bottom: 4px;
   background: var(--bg-tertiary);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  z-index: 10;
-  min-width: 180px;
-  overflow: hidden;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  z-index: 100;
+  min-width: 220px;
+  max-height: 320px;
+  overflow-y: auto;
+  box-shadow: 0 -4px 16px rgba(0,0,0,0.12);
 }
 
 .sample-menu.open {
