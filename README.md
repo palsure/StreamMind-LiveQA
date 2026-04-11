@@ -118,7 +118,7 @@ flowchart LR
   <img src="figures/qual_historical.png" width="85%" alt="Historical-scope qualitative example"/>
 </p>
 
-## Results (paper table, LiveQA-Bench)
+## Results
 
 Reference baselines use the same causal rule: only frames up to the question time count.
 
@@ -184,17 +184,8 @@ Commit those files if you want the links above to resolve on GitHub; otherwise r
 
 ## Paper, eval, demo
 
-- **Paper:** `latexmk -pdf main.tex` in `paper/`. Details in [`paper/README.md`](paper/README.md).
-- **Evaluation:** [`eval/README.md`](eval/README.md) and `eval/StreamMind_Eval.ipynb`.
 - **Demo:** [`demo/README.md`](demo/README.md).
-
-**Eval quick start:**
-
-```bash
-cd eval
-pip install -r requirements.txt
-python run_docker_eval.py --project-root ..
-```
+- **Evaluation:** [`eval/README.md`](eval/README.md) and `eval/StreamMind_Eval.ipynb`.
 
 **Demo quick start:**
 
@@ -204,6 +195,14 @@ docker compose up --build -d
 ```
 
 Then open `http://localhost:8000`. Sample MP4s: `python demo/scripts/download_samples.py --eval` from repo root (videos stay gitignored as `*.mp4`).
+
+**Eval quick start:**
+
+```bash
+cd eval
+pip install -r requirements.txt
+python run_docker_eval.py --project-root ..
+```
 
 ## Models used
 
